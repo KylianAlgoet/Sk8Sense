@@ -1,47 +1,83 @@
-import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import useSessionStore from '../store/sessionStore';
 
 export default function HomeScreen({ navigation }) {
+  const { sessions } = useSessionStore();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.logo}>SK8SENSE</Text>
-      <Text style={styles.subtitle}>AI Skateboard Coach</Text>
-      <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Connect')}>
-        <Text style={styles.buttonText}>SCAN FOR BOARD</Text>
+      <View style={styles.logoWrap}>
+        <Text style={styles.logo}>SK8SENSE</Text>
+        <Text style={styles.subtitle}>AI Skateboard Coach</Text>
+      </View>
+
+      <View style={styles.statsRow}>
+        <View style={styles.statBox}>
+          <Text style={styles.statValue}>{sessions.length}</Text>
+          <Text style={styles.statLabel}>Sessies</Text>
+        </View>
+        <View style={styles.statBox}>
+          <Text style={styles.statValue}>
+            {sessions.reduce((acc, s) => acc + s.tricks.length, 0)}
+          </Text>
+          <Text style={styles.statLabel}>Tricks</Text>
+        </View>
+        <View style={styles.statBox}>
+          <Text style={styles.statValue}>
+            {sessions.reduce((acc, s) => acc + s.duration, 0) > 0
+              ? Math.floor(sessions.reduce((acc, s) => acc + s.duration, 0) / 60) + 'min'
+              : '0min'}
+          </Text>
+          <Text style={styles.statLabel}>Tijd</Text>
+        </View>
+      </View>
+
+      <TouchableOpacity
+        style={styles.primaryBtn}
+        onPress={() => navigation.navigate('Connect')}
+      >
+        <Text style={styles.primaryBtnText}>🛹 SCAN FOR BOARD</Text>
       </TouchableOpacity>
+
+      {sessions.length > 0 && (
+        <TouchableOpacity
+          style={styles.secondaryBtn}
+          onPress={() => navigation.navigate('History')}
+        >
+          <Text style={styles.secondaryBtnText}>Sessie History ({sessions.length})</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#1a1a2e',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
+    flex: 1, backgroundColor: '#1a1a2e',
+    alignItems: 'center', justifyContent: 'center',
+    padding: 32, gap: 20,
   },
-  logo: {
-    color: '#e94560',
-    fontSize: 48,
-    fontWeight: 'bold',
-    letterSpacing: 4,
+  logoWrap: { alignItems: 'center', marginBottom: 12 },
+  logo: { color: '#e94560', fontSize: 48, fontWeight: 'bold', letterSpacing: 4 },
+  subtitle: { color: '#aaa', fontSize: 16, marginTop: 4 },
+
+  statsRow: { flexDirection: 'row', gap: 12, marginBottom: 8 },
+  statBox: {
+    flex: 1, backgroundColor: '#16213e',
+    borderRadius: 10, padding: 14, alignItems: 'center',
   },
-  subtitle: {
-    color: '#fff',
-    fontSize: 18,
-    marginBottom: 32,
+  statValue: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
+  statLabel: { color: '#555', fontSize: 11, marginTop: 2 },
+
+  primaryBtn: {
+    backgroundColor: '#e94560', width: '100%',
+    paddingVertical: 16, borderRadius: 10, alignItems: 'center',
   },
-  button: {
-    backgroundColor: '#e94560',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 8,
+  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold', letterSpacing: 1 },
+
+  secondaryBtn: {
+    borderWidth: 1, borderColor: '#333', width: '100%',
+    paddingVertical: 12, borderRadius: 10, alignItems: 'center',
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
+  secondaryBtnText: { color: '#aaa', fontSize: 14 },
 });
