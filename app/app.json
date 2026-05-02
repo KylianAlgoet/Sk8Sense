@@ -1,32 +1,59 @@
 {
   "expo": {
-    "name": "app",
-    "slug": "app",
+    "name": "SK8Sense",
+    "slug": "sk8sense",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1a1a2e"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.sk8sense.app",
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "SK8Sense needs Bluetooth to connect to your skateboard sensor.",
+        "NSBluetoothPeripheralUsageDescription": "SK8Sense needs Bluetooth to connect to your skateboard sensor.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.sk8sense.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#1a1a2e"
       },
-      "edgeToEdgeEnabled": true
+      "permissions": [
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "react-native-ble-plx"
-    ]
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "modes": [
+            "central"
+          ],
+          "bluetoothAlwaysPermission": "SK8Sense needs Bluetooth to connect to your skateboard sensor."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9fba6fc4-b634-4ce3-a6ba-0f7f9cc4f2f2"
+      }
+    }
   }
 }

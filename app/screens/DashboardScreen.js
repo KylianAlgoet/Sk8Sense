@@ -1,7 +1,9 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import useBleStore, { SERVICE_UUID, CHAR_UUID } from '../store/bleStore';
+import { startMockSensor } from '../store/mockBle';
 
+const IS_WEB = Platform.OS === 'web';
 const SENSOR_KEYS = ['ax', 'ay', 'az', 'gx', 'gy', 'gz'];
 
 export default function DashboardScreen({ navigation }) {
@@ -9,6 +11,12 @@ export default function DashboardScreen({ navigation }) {
   const subscriptionRef = useRef(null);
 
   useEffect(() => {
+    if (IS_WEB) {
+      const stop = startMockSensor((data) => setSensorData(data));
+      subscriptionRef.current = { remove: stop };
+      return stop;
+    }
+
     if (!connectedDevice) return;
 
     subscriptionRef.current = connectedDevice.monitorCharacteristicForService(
@@ -18,22 +26,19 @@ export default function DashboardScreen({ navigation }) {
         if (error || !characteristic?.value) return;
         try {
           const json = atob(characteristic.value);
-          const parsed = JSON.parse(json);
-          setSensorData(parsed);
+          setSensorData(JSON.parse(json));
         } catch {
           // ignore malformed frames
         }
       }
     );
 
-    return () => {
-      subscriptionRef.current?.remove();
-    };
+    return () => subscriptionRef.current?.remove();
   }, [connectedDevice]);
 
   const handleDisconnect = () => {
     subscriptionRef.current?.remove();
-    connectedDevice?.cancelConnection();
+    if (!IS_WEB) connectedDevice?.cancelConnection();
     disconnect();
     navigation.navigate('Home');
   };
@@ -42,7 +47,10 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Live Sensor Data</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Live Sensor Data</Text>
+        {IS_WEB && <Text style={styles.demoTag}>DEMO MODE</Text>}
+      </View>
 
       <View style={styles.grid}>
         {SENSOR_KEYS.map((key) => (
@@ -75,11 +83,22 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 60,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 24,
+  },
   title: {
     color: '#e94560',
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 24,
+  },
+  demoTag: {
+    color: '#FFD700',
+    fontSize: 11,
+    fontWeight: 'bold',
+    letterSpacing: 2,
   },
   grid: {
     flexDirection: 'row',

@@ -1,26 +1,79 @@
-import React, { useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { BleManager } from 'react-native-ble-plx';
+import React, { useEffect, useState } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import useBleStore, { SERVICE_UUID } from '../store/bleStore';
+
+const IS_WEB = Platform.OS === 'web';
+
+const MOCK_DEVICE = { id: 'mock-esp32', name: 'SK8Sense ESP32 (Demo)' };
 
 export default function ConnectScreen({ navigation }) {
   const { manager, setManager, isScanning, setScanning, devices, addDevice, setConnectedDevice } =
     useBleStore();
+  const [mockScanning, setMockScanning] = useState(false);
+  const [mockDevices, setMockDevices] = useState([]);
 
   useEffect(() => {
+    if (IS_WEB) return;
+    const { BleManager } = require('react-native-ble-plx');
     const mgr = new BleManager();
     setManager(mgr);
     return () => mgr.destroy();
   }, []);
 
+  // Web demo: simulate a 1.5s scan that finds the mock device
+  const startMockScan = () => {
+    setMockScanning(true);
+    setMockDevices([]);
+    setTimeout(() => {
+      setMockDevices([MOCK_DEVICE]);
+      setMockScanning(false);
+    }, 1500);
+  };
+
+  const connectMock = () => {
+    setConnectedDevice(MOCK_DEVICE);
+    navigation.navigate('Dashboard');
+  };
+
+  if (IS_WEB) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Nearby Boards</Text>
+        <Text style={styles.demoTag}>DEMO MODE</Text>
+        {mockScanning && (
+          <View style={styles.scanRow}>
+            <ActivityIndicator color="#e94560" />
+            <Text style={styles.scanText}>Scanning...</Text>
+          </View>
+        )}
+        <TouchableOpacity style={styles.button} onPress={startMockScan} disabled={mockScanning}>
+          <Text style={styles.buttonText}>SCAN FOR BOARD</Text>
+        </TouchableOpacity>
+        <FlatList
+          data={mockDevices}
+          keyExtractor={(item) => item.id}
+          style={styles.list}
+          renderItem={({ item }) => (
+            <View style={styles.deviceRow}>
+              <Text style={styles.deviceName}>{item.name}</Text>
+              <TouchableOpacity style={styles.connectBtn} onPress={connectMock}>
+                <Text style={styles.connectBtnText}>Connect</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          ListEmptyComponent={
+            !mockScanning && <Text style={styles.emptyText}>Press "Scan for Board" to start</Text>
+          }
+        />
+      </View>
+    );
+  }
+
   const startScan = () => {
     if (!manager || isScanning) return;
     setScanning(true);
     manager.startDeviceScan([SERVICE_UUID], null, (error, device) => {
-      if (error) {
-        setScanning(false);
-        return;
-      }
+      if (error) { setScanning(false); return; }
       if (device) addDevice(device);
     });
   };
@@ -62,9 +115,7 @@ export default function ConnectScreen({ navigation }) {
             </TouchableOpacity>
           </View>
         )}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>No devices found yet</Text>
-        }
+        ListEmptyComponent={<Text style={styles.emptyText}>No devices found yet</Text>}
       />
     </View>
   );
@@ -81,7 +132,14 @@ const styles = StyleSheet.create({
     color: '#e94560',
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 24,
+    marginBottom: 4,
+  },
+  demoTag: {
+    color: '#FFD700',
+    fontSize: 11,
+    fontWeight: 'bold',
+    letterSpacing: 2,
+    marginBottom: 20,
   },
   scanRow: {
     flexDirection: 'row',
@@ -106,9 +164,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
-  list: {
-    flex: 1,
-  },
+  list: { flex: 1 },
   deviceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -118,25 +174,13 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 10,
   },
-  deviceName: {
-    color: '#fff',
-    fontSize: 14,
-    flex: 1,
-  },
+  deviceName: { color: '#fff', fontSize: 14, flex: 1 },
   connectBtn: {
     backgroundColor: '#e94560',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 6,
   },
-  connectBtnText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  emptyText: {
-    color: '#555',
-    textAlign: 'center',
-    marginTop: 40,
-  },
+  connectBtnText: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
+  emptyText: { color: '#555', textAlign: 'center', marginTop: 40 },
 });
