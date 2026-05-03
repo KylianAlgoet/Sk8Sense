@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, Platform, Animated } from 'react-native';
 import { Buffer } from 'buffer';
 import useBleStore, { SERVICE_UUID, CHAR_UUID } from '../store/bleStore';
 import useSessionStore from '../store/sessionStore';
@@ -7,12 +7,18 @@ import { startMockSensor } from '../store/mockBle';
 
 const IS_WEB = Platform.OS === 'web';
 const SENSOR_KEYS = ['ax', 'ay', 'az', 'gx', 'gy', 'gz'];
-const UI_HZ = 10; // render sensor grid at 10Hz max
+const UI_HZ = 10;
 
 const TRICK_COLORS = {
   ollie:    '#4CAF50',
   kickflip: '#2196F3',
   heelflip: '#FF9800',
+};
+
+const COACHING_TIPS = {
+  ollie:    'Stay over the board on landing',
+  kickflip: 'Flick harder off the pocket',
+  heelflip: 'Kick out more with your heel',
 };
 
 function formatDuration(seconds) {
@@ -35,16 +41,44 @@ export default function DashboardScreen({ navigation }) {
   const isActiveRef = useRef(isActive);
   const [elapsed, setElapsed] = useState(0);
   const timerRef = useRef(null);
+  const tipTimerRef = useRef(null);
 
-  // Keep ref in sync so BLE callback always sees latest value without re-subscribing
+  // Animation
+  const bannerScale = useRef(new Animated.Value(1)).current;
+  const bannerOpacity = useRef(new Animated.Value(0)).current;
+  const [currentTip, setCurrentTip] = useState('');
+  const [lastTrick, setLastTrick] = useState('');
+
   useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
 
-  // BLE / mock sensor feed
+  function triggerTrickAnimation(trick) {
+    setLastTrick(trick);
+    setCurrentTip(COACHING_TIPS[trick] || '');
+
+    // Pop in animation
+    bannerScale.setValue(1.25);
+    bannerOpacity.setValue(1);
+    Animated.spring(bannerScale, {
+      toValue: 1,
+      friction: 4,
+      tension: 120,
+      useNativeDriver: true,
+    }).start();
+
+    // Fade tip out after 2.5s
+    clearTimeout(tipTimerRef.current);
+    tipTimerRef.current = setTimeout(() => {
+      Animated.timing(bannerOpacity, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }).start(() => setCurrentTip(''));
+    }, 2500);
+  }
+
   useEffect(() => {
     if (IS_WEB) {
-      const stop = startMockSensor((data) => {
-        handleIncomingData(data);
-      });
+      const stop = startMockSensor((data) => handleIncomingData(data));
       subscriptionRef.current = { remove: stop };
       return stop;
     }
@@ -63,14 +97,13 @@ export default function DashboardScreen({ navigation }) {
   }, [connectedDevice]);
 
   function handleIncomingData(data) {
-    // Trick detection on every frame
     const trick = data.trick;
     if (isActiveRef.current && trick !== 'none' && prevTrickRef.current === 'none') {
       addTrick(trick);
+      triggerTrickAnimation(trick);
     }
     prevTrickRef.current = trick;
 
-    // Throttle UI updates to 10Hz
     const now = Date.now();
     if (now - lastUiUpdateRef.current >= 1000 / UI_HZ) {
       lastUiUpdateRef.current = now;
@@ -78,7 +111,6 @@ export default function DashboardScreen({ navigation }) {
     }
   }
 
-  // Session timer — clean interval, no deps on sensor data
   useEffect(() => {
     if (isActive) {
       setElapsed(0);
@@ -101,6 +133,7 @@ export default function DashboardScreen({ navigation }) {
   const handleDisconnect = () => {
     subscriptionRef.current?.remove();
     clearInterval(timerRef.current);
+    clearTimeout(tipTimerRef.current);
     if (!IS_WEB) connectedDevice?.cancelConnection();
     disconnect();
     navigation.navigate('Home');
@@ -129,10 +162,25 @@ export default function DashboardScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
+      {/* Animated trick banner */}
       {trickActive && (
-        <View style={[styles.trickBanner, { backgroundColor: TRICK_COLORS[sensorData.trick] || '#FFD700' }]}>
+        <Animated.View
+          style={[
+            styles.trickBanner,
+            { backgroundColor: TRICK_COLORS[sensorData.trick] || '#FFD700' },
+            { transform: [{ scale: bannerScale }], opacity: bannerOpacity },
+          ]}
+        >
           <Text style={styles.trickText}>🛹 {sensorData.trick.toUpperCase()}</Text>
-        </View>
+        </Animated.View>
+      )}
+
+      {/* Coaching tip */}
+      {currentTip !== '' && (
+        <Animated.View style={[styles.tipBox, { opacity: bannerOpacity }]}>
+          <Text style={styles.tipLabel}>💡 COACH</Text>
+          <Text style={styles.tipText}>{currentTip}</Text>
+        </Animated.View>
       )}
 
       <View style={styles.grid}>
@@ -160,6 +208,7 @@ export default function DashboardScreen({ navigation }) {
           <View style={styles.feedItem}>
             <View style={[styles.feedDot, { backgroundColor: TRICK_COLORS[item.trick] || '#fff' }]} />
             <Text style={styles.feedTrick}>{item.trick.toUpperCase()}</Text>
+            <Text style={styles.feedTip}>{COACHING_TIPS[item.trick]}</Text>
             <Text style={styles.feedTime}>{formatTime(item.time)}</Text>
           </View>
         )}
@@ -192,10 +241,18 @@ const styles = StyleSheet.create({
   sessionBtnText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
 
   trickBanner: {
-    borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16,
-    alignItems: 'center', marginBottom: 12,
+    borderRadius: 8, paddingVertical: 12, paddingHorizontal: 16,
+    alignItems: 'center', marginBottom: 6,
   },
-  trickText: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
+  trickText: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
+
+  tipBox: {
+    backgroundColor: '#0f3460', borderRadius: 8,
+    paddingVertical: 8, paddingHorizontal: 14,
+    marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 8,
+  },
+  tipLabel: { color: '#FFD700', fontSize: 10, fontWeight: 'bold' },
+  tipText: { color: '#fff', fontSize: 13, flex: 1 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
   cell: { backgroundColor: '#16213e', borderRadius: 8, padding: 10, width: '30%', alignItems: 'center' },
@@ -208,9 +265,10 @@ const styles = StyleSheet.create({
   feedItem: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#16213e', borderRadius: 6,
-    padding: 10, marginBottom: 6, gap: 10,
+    padding: 10, marginBottom: 6, gap: 8,
   },
   feedDot: { width: 8, height: 8, borderRadius: 4 },
-  feedTrick: { color: '#fff', fontWeight: 'bold', fontSize: 14, flex: 1 },
-  feedTime: { color: '#555', fontSize: 12 },
+  feedTrick: { color: '#fff', fontWeight: 'bold', fontSize: 13, width: 70 },
+  feedTip: { color: '#555', fontSize: 11, flex: 1 },
+  feedTime: { color: '#444', fontSize: 11 },
 });
