@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, Platform } from 'react-native';
+import { Buffer } from 'buffer';
 import useBleStore, { SERVICE_UUID, CHAR_UUID } from '../store/bleStore';
 import useSessionStore from '../store/sessionStore';
 import { startMockSensor } from '../store/mockBle';
 
 const IS_WEB = Platform.OS === 'web';
 const SENSOR_KEYS = ['ax', 'ay', 'az', 'gx', 'gy', 'gz'];
+const UI_HZ = 10; // render sensor grid at 10Hz max
 
 const TRICK_COLORS = {
   ollie:    '#4CAF50',
@@ -29,13 +31,20 @@ export default function DashboardScreen({ navigation }) {
 
   const subscriptionRef = useRef(null);
   const prevTrickRef = useRef('none');
+  const lastUiUpdateRef = useRef(0);
+  const isActiveRef = useRef(isActive);
   const [elapsed, setElapsed] = useState(0);
   const timerRef = useRef(null);
+
+  // Keep ref in sync so BLE callback always sees latest value without re-subscribing
+  useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
 
   // BLE / mock sensor feed
   useEffect(() => {
     if (IS_WEB) {
-      const stop = startMockSensor((data) => setSensorData(data));
+      const stop = startMockSensor((data) => {
+        handleIncomingData(data);
+      });
       subscriptionRef.current = { remove: stop };
       return stop;
     }
@@ -44,22 +53,32 @@ export default function DashboardScreen({ navigation }) {
       SERVICE_UUID, CHAR_UUID,
       (error, characteristic) => {
         if (error || !characteristic?.value) return;
-        try { setSensorData(JSON.parse(atob(characteristic.value))); } catch {}
+        try {
+          const json = Buffer.from(characteristic.value, 'base64').toString('utf8');
+          handleIncomingData(JSON.parse(json));
+        } catch {}
       }
     );
     return () => subscriptionRef.current?.remove();
   }, [connectedDevice]);
 
-  // Trick detection — fire once per trick transition
-  useEffect(() => {
-    const current = sensorData.trick;
-    if (isActive && current !== 'none' && prevTrickRef.current === 'none') {
-      addTrick(current);
+  function handleIncomingData(data) {
+    // Trick detection on every frame
+    const trick = data.trick;
+    if (isActiveRef.current && trick !== 'none' && prevTrickRef.current === 'none') {
+      addTrick(trick);
     }
-    prevTrickRef.current = current;
-  }, [sensorData.trick, isActive]);
+    prevTrickRef.current = trick;
 
-  // Session timer
+    // Throttle UI updates to 10Hz
+    const now = Date.now();
+    if (now - lastUiUpdateRef.current >= 1000 / UI_HZ) {
+      lastUiUpdateRef.current = now;
+      setSensorData(data);
+    }
+  }
+
+  // Session timer — clean interval, no deps on sensor data
   useEffect(() => {
     if (isActive) {
       setElapsed(0);
@@ -91,7 +110,6 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Dashboard</Text>
         {IS_WEB && <Text style={styles.demoTag}>DEMO</Text>}
@@ -100,9 +118,8 @@ export default function DashboardScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Session bar */}
       <View style={[styles.sessionBar, isActive && styles.sessionBarActive]}>
-        <Text style={styles.sessionTimer}>{isActive ? formatDuration(elapsed) : '00:00'}</Text>
+        <Text style={styles.sessionTimer}>{formatDuration(elapsed)}</Text>
         <Text style={styles.sessionTrickCount}>{tricks.length} tricks</Text>
         <TouchableOpacity
           style={[styles.sessionBtn, isActive && styles.sessionBtnStop]}
@@ -112,14 +129,12 @@ export default function DashboardScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Trick banner */}
       {trickActive && (
         <View style={[styles.trickBanner, { backgroundColor: TRICK_COLORS[sensorData.trick] || '#FFD700' }]}>
           <Text style={styles.trickText}>🛹 {sensorData.trick.toUpperCase()}</Text>
         </View>
       )}
 
-      {/* Sensor grid */}
       <View style={styles.grid}>
         {SENSOR_KEYS.map((key) => (
           <View key={key} style={styles.cell}>
@@ -131,15 +146,14 @@ export default function DashboardScreen({ navigation }) {
         ))}
       </View>
 
-      {/* Live trick feed */}
-      <Text style={styles.feedTitle}>Live Trick Feed</Text>
+      <Text style={styles.feedTitle}>LIVE TRICK FEED</Text>
       <FlatList
         data={[...tricks].reverse()}
         keyExtractor={(_, i) => i.toString()}
         style={styles.feed}
         ListEmptyComponent={
           <Text style={styles.feedEmpty}>
-            {isActive ? 'Waiting for tricks...' : 'Start a session to track tricks'}
+            {isActive ? 'Wacht op tricks...' : 'Druk START SESSION'}
           </Text>
         }
         renderItem={({ item }) => (
@@ -168,7 +182,7 @@ const styles = StyleSheet.create({
     padding: 12, marginBottom: 12, gap: 10,
   },
   sessionBarActive: { borderWidth: 1, borderColor: '#e94560' },
-  sessionTimer: { color: '#fff', fontSize: 20, fontWeight: 'bold', fontVariant: ['tabular-nums'], flex: 1 },
+  sessionTimer: { color: '#fff', fontSize: 20, fontWeight: 'bold', flex: 1 },
   sessionTrickCount: { color: '#aaa', fontSize: 13 },
   sessionBtn: {
     backgroundColor: '#e94560', paddingVertical: 8,
@@ -188,7 +202,7 @@ const styles = StyleSheet.create({
   cellLabel: { color: '#e94560', fontSize: 10, fontWeight: 'bold', marginBottom: 2 },
   cellValue: { color: '#fff', fontSize: 14, fontWeight: '600' },
 
-  feedTitle: { color: '#aaa', fontSize: 12, fontWeight: 'bold', letterSpacing: 1, marginBottom: 6 },
+  feedTitle: { color: '#aaa', fontSize: 11, fontWeight: 'bold', letterSpacing: 2, marginBottom: 6 },
   feed: { flex: 1 },
   feedEmpty: { color: '#444', textAlign: 'center', marginTop: 20, fontSize: 13 },
   feedItem: {

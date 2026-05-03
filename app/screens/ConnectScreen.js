@@ -1,16 +1,37 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, PermissionsAndroid, Alert } from 'react-native';
 import useBleStore, { SERVICE_UUID } from '../store/bleStore';
 
 const IS_WEB = Platform.OS === 'web';
 
 const MOCK_DEVICE = { id: 'mock-esp32', name: 'SK8Sense ESP32 (Demo)' };
 
+async function requestBluetoothPermissions() {
+  if (Platform.OS !== 'android') return true;
+  if (Platform.Version >= 31) {
+    const result = await PermissionsAndroid.requestMultiple([
+      PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+      PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+    ]);
+    return (
+      result['android.permission.BLUETOOTH_SCAN'] === 'granted' &&
+      result['android.permission.BLUETOOTH_CONNECT'] === 'granted'
+    );
+  } else {
+    const result = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+    );
+    return result === 'granted';
+  }
+}
+
 export default function ConnectScreen({ navigation }) {
   const { manager, setManager, isScanning, setScanning, devices, addDevice, setConnectedDevice } =
     useBleStore();
   const [mockScanning, setMockScanning] = useState(false);
   const [mockDevices, setMockDevices] = useState([]);
+  const [permissionError, setPermissionError] = useState(false);
 
   useEffect(() => {
     if (IS_WEB) return;
@@ -69,10 +90,20 @@ export default function ConnectScreen({ navigation }) {
     );
   }
 
-  const startScan = () => {
+  const startScan = async () => {
     if (!manager || isScanning) return;
+    const granted = await requestBluetoothPermissions();
+    if (!granted) {
+      setPermissionError(true);
+      Alert.alert(
+        'Bluetooth permissie geweigerd',
+        'Ga naar Instellingen → Apps → SK8Sense → Rechten en geef Bluetooth en Locatie toegang.',
+      );
+      return;
+    }
+    setPermissionError(false);
     setScanning(true);
-    manager.startDeviceScan([SERVICE_UUID], null, (error, device) => {
+    manager.startDeviceScan(null, null, (error, device) => {
       if (error) { setScanning(false); return; }
       if (device) addDevice(device);
     });
@@ -83,6 +114,7 @@ export default function ConnectScreen({ navigation }) {
     setScanning(false);
     try {
       const connected = await device.connect();
+      await connected.requestMTU(185);
       await connected.discoverAllServicesAndCharacteristics();
       setConnectedDevice(connected);
       navigation.navigate('Dashboard');
@@ -94,6 +126,9 @@ export default function ConnectScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Nearby Boards</Text>
+      {permissionError && (
+        <Text style={styles.errorText}>Bluetooth permissie geweigerd — check app instellingen</Text>
+      )}
       {isScanning && (
         <View style={styles.scanRow}>
           <ActivityIndicator color="#e94560" />
@@ -183,4 +218,5 @@ const styles = StyleSheet.create({
   },
   connectBtnText: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
   emptyText: { color: '#555', textAlign: 'center', marginTop: 40 },
+  errorText: { color: '#e94560', fontSize: 13, marginBottom: 10 },
 });
