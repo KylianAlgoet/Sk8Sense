@@ -17,57 +17,43 @@ float ax = 0.0f, ay = 0.0f, az = 9.8f;
 float gx = 0.0f, gy = 0.0f, gz = 0.0f;
 String trick = "none";
 
-// Trick detection thresholds
-#define POP_THRESHOLD     2.5f   // az drop below this = tail press
-#define AIRTIME_THRESHOLD 2.0f   // az below this = in air
-#define LAND_THRESHOLD    15.0f  // az above this = landing impact
-#define KICK_THRESHOLD    200.0f // gx above this = kickflip
-#define HEEL_THRESHOLD   -200.0f // gx below this = heelflip
-#define AIRTIME_MIN_MS    80     // minimum airtime to count as trick
+// Magnitude-based thresholds — work regardless of sensor orientation
+#define AIRTIME_MAG_MAX   7.0f   // total accel < 7 m/s² = in air (weightlessness)
+#define LAND_MAG_MIN      14.0f  // total accel > 14 m/s² = landing impact
+#define KICK_THRESHOLD    200.0f
+#define HEEL_THRESHOLD   -200.0f
+#define AIRTIME_MIN_MS    80
 
-enum TrickPhase { IDLE, TAIL_PRESS, AIRTIME, LANDING };
+enum TrickPhase { IDLE, AIRTIME, LANDING };
 static TrickPhase trickPhase = IDLE;
 static unsigned long phaseStartMs = 0;
 static String detectedTrick = "none";
 
-void detectTrick(float az_g, float gx_dps) {
+void detectTrick(float ax_ms, float ay_ms, float az_ms, float gx_dps) {
     unsigned long now = millis();
+    float mag = sqrt(ax_ms*ax_ms + ay_ms*ay_ms + az_ms*az_ms);
 
     switch (trickPhase) {
         case IDLE:
-            if (az_g < POP_THRESHOLD) {
-                trickPhase = TAIL_PRESS;
-                phaseStartMs = now;
-            }
-            trick = "none";
-            break;
-
-        case TAIL_PRESS:
-            if (az_g < AIRTIME_THRESHOLD) {
-                // Board left the ground — classify trick by gyro
-                if (gx_dps > KICK_THRESHOLD)       detectedTrick = "kickflip";
-                else if (gx_dps < HEEL_THRESHOLD)   detectedTrick = "heelflip";
-                else                                 detectedTrick = "ollie";
+            if (mag < AIRTIME_MAG_MAX) {
+                if (gx_dps > KICK_THRESHOLD)      detectedTrick = "kickflip";
+                else if (gx_dps < HEEL_THRESHOLD) detectedTrick = "heelflip";
+                else                               detectedTrick = "ollie";
                 trickPhase = AIRTIME;
                 phaseStartMs = now;
-            } else if (now - phaseStartMs > 500) {
-                // No pop happened — reset
-                trickPhase = IDLE;
             }
             trick = "none";
             break;
-
         case AIRTIME:
             trick = detectedTrick;
-            if (az_g > LAND_THRESHOLD && now - phaseStartMs > AIRTIME_MIN_MS) {
+            if (mag > LAND_MAG_MIN && now - phaseStartMs > AIRTIME_MIN_MS) {
                 trickPhase = LANDING;
                 phaseStartMs = now;
             }
             break;
-
         case LANDING:
             trick = detectedTrick;
-            if (now - phaseStartMs > 200) {
+            if (now - phaseStartMs > 300) {
                 trickPhase = IDLE;
                 trick = "none";
                 detectedTrick = "none";
@@ -82,14 +68,13 @@ void setup() {
 
     mpu.initialize();
     if (!mpu.testConnection()) {
-        Serial.println("MPU6050 connection FAILED — check wiring!");
+        Serial.println("MPU6050 connection FAILED");
     } else {
         Serial.println("MPU6050 connected OK");
     }
 
-    // Configure ranges
-    mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_8);  // ±8g
-    mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_500);  // ±500°/s
+    mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_8);
+    mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_500);
 
     NimBLEDevice::init("SK8Sense");
     NimBLEServer* pServer = NimBLEDevice::createServer();
@@ -110,19 +95,15 @@ void loop() {
     int16_t rawAx, rawAy, rawAz, rawGx, rawGy, rawGz;
     mpu.getMotion6(&rawAx, &rawAy, &rawAz, &rawGx, &rawGy, &rawGz);
 
-    // Convert to m/s² (±8g range: 4096 LSB/g) and multiply by 9.81
     ax = (rawAx / 4096.0f) * 9.81f;
     ay = (rawAy / 4096.0f) * 9.81f;
     az = (rawAz / 4096.0f) * 9.81f;
 
-    // Convert to °/s (±500°/s range: 65.5 LSB/°/s)
     gx = rawGx / 65.5f;
     gy = rawGy / 65.5f;
     gz = rawGz / 65.5f;
 
-    // Trick detection uses az in g (not m/s²)
-    float az_g = rawAz / 4096.0f;
-    detectTrick(az_g, gx);
+    detectTrick(ax, ay, az, gx);
 
     StaticJsonDocument<200> doc;
     doc["ax"] = ax;
