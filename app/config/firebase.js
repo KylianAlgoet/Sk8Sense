@@ -6,12 +6,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // TODO: Replace these values with your Firebase project config.
 // Go to https://console.firebase.google.com → your project → Project settings → Your apps → SDK setup
 const firebaseConfig = {
-  apiKey: 'REPLACE_WITH_YOUR_API_KEY',
-  authDomain: 'REPLACE_WITH_YOUR_AUTH_DOMAIN',
-  projectId: 'REPLACE_WITH_YOUR_PROJECT_ID',
-  storageBucket: 'REPLACE_WITH_YOUR_STORAGE_BUCKET',
-  messagingSenderId: 'REPLACE_WITH_YOUR_MESSAGING_SENDER_ID',
-  appId: 'REPLACE_WITH_YOUR_APP_ID',
+  apiKey: 'AIzaSyBxRKPpTbz-BEm1jRidWqL6L9VYSOMWVAo',
+  authDomain: 'skatesense.firebaseapp.com',
+  projectId: 'skatesense',
+  storageBucket: 'skatesense.firebasestorage.app',
+  messagingSenderId: '722104966243',
+  appId: '1:722104966243:web:9928ddfd8df79c83daac56',
+  measurementId: 'G-Y0493WVGTN',
 };
 
 const app = initializeApp(firebaseConfig);
