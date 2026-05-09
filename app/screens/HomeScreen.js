@@ -1,27 +1,14 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import useSessionStore from '../store/sessionStore';
-import useAuthStore from '../store/authStore';
 
 export default function HomeScreen({ navigation }) {
   const { sessions } = useSessionStore();
-  const { user } = useAuthStore();
 
   const totalTricks = sessions.reduce((acc, s) => acc + s.tricks.length, 0);
   const totalMinutes = sessions.reduce((acc, s) => acc + s.duration, 0);
 
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
-        <View />
-        <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {user?.displayName ? user.displayName[0].toUpperCase() : '?'}
-            </Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-
       <View style={styles.logoWrap}>
         <Text style={styles.logo}>SK8SENSE</Text>
         <Text style={styles.subtitle}>AI Skateboard Coach</Text>
@@ -54,7 +41,7 @@ export default function HomeScreen({ navigation }) {
       {sessions.length > 0 && (
         <TouchableOpacity
           style={styles.secondaryBtn}
-          onPress={() => navigation.navigate('History')}
+          onPress={() => navigation.getParent()?.navigate('Profile', { screen: 'History' })}
         >
           <Text style={styles.secondaryBtnText}>Session History ({sessions.length})</Text>
         </TouchableOpacity>
@@ -69,16 +56,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     padding: 32, gap: 20,
   },
-  topBar: {
-    position: 'absolute', top: 52, left: 32, right: 32,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-  },
-  avatar: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: '#e94560', alignItems: 'center', justifyContent: 'center',
-  },
-  avatarText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-
   logoWrap: { alignItems: 'center', marginBottom: 12 },
   logo: { color: '#e94560', fontSize: 48, fontWeight: 'bold', letterSpacing: 4 },
   subtitle: { color: '#aaa', fontSize: 16, marginTop: 4 },

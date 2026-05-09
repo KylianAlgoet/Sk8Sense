@@ -8,12 +8,7 @@ import useAuthStore from './store/authStore';
 import OnboardingScreen from './screens/OnboardingScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
-import HomeScreen from './screens/HomeScreen';
-import ConnectScreen from './screens/ConnectScreen';
-import DashboardScreen from './screens/DashboardScreen';
-import SessionSummaryScreen from './screens/SessionSummaryScreen';
-import HistoryScreen from './screens/HistoryScreen';
-import ProfileScreen from './screens/ProfileScreen';
+import MainTabs from './navigation/MainTabs';
 
 const Stack = createNativeStackNavigator();
 const ONBOARDING_KEY = 'sk8sense_onboarded';
@@ -58,14 +53,7 @@ export default function App() {
             <Stack.Screen name="Register" component={RegisterScreen} />
           </>
         ) : (
-          <>
-            <Stack.Screen name="Home" component={HomeScreen} />
-            <Stack.Screen name="Connect" component={ConnectScreen} />
-            <Stack.Screen name="Dashboard" component={DashboardScreen} />
-            <Stack.Screen name="SessionSummary" component={SessionSummaryScreen} />
-            <Stack.Screen name="History" component={HistoryScreen} />
-            <Stack.Screen name="Profile" component={ProfileScreen} />
-          </>
+          <Stack.Screen name="MainTabs" component={MainTabs} />
         )}
       </Stack.Navigator>
     </NavigationContainer>

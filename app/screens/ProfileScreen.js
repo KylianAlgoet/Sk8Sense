@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import useAuthStore from '../store/authStore';
 import useSessionStore from '../store/sessionStore';
@@ -10,7 +11,9 @@ const TRICK_COLORS = {
 
 export default function ProfileScreen({ navigation }) {
   const { user, logout } = useAuthStore();
-  const { sessions } = useSessionStore();
+  const { sessions, loadSessions } = useSessionStore();
+
+  useEffect(() => { loadSessions(); }, []);
 
   const totalTricks = sessions.reduce((acc, s) => acc + s.tricks.length, 0);
   const totalMinutes = Math.floor(sessions.reduce((acc, s) => acc + s.duration, 0) / 60);
@@ -31,10 +34,10 @@ export default function ProfileScreen({ navigation }) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>← Back</Text>
-        </TouchableOpacity>
         <Text style={styles.title}>Profile</Text>
+        <TouchableOpacity style={styles.historyBtn} onPress={() => navigation.navigate('History')}>
+          <Text style={styles.historyBtnText}>History</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.avatarWrap}>
@@ -99,9 +102,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#1a1a2e' },
   content: { padding: 24, paddingTop: 52, paddingBottom: 48 },
 
-  header: { marginBottom: 32 },
-  back: { color: '#aaa', fontSize: 14, marginBottom: 8 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 },
   title: { color: '#e94560', fontSize: 28, fontWeight: 'bold' },
+  historyBtn: { backgroundColor: '#16213e', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 },
+  historyBtnText: { color: '#aaa', fontSize: 13 },
 
   avatarWrap: { alignItems: 'center', marginBottom: 32 },
   avatar: {
