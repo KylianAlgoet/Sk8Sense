@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  Animated, Modal, StatusBar, Dimensions,
+  Animated, Modal, StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useTrickStore from '../store/trickStore';
 import useBleStore from '../store/bleStore';
+import SkateboardGL from '../components/SkateboardGL';
 
-const { width: SCREEN_W } = Dimensions.get('window');
 const ROUND_SIZE = 5;
 
 const ROUND_MESSAGES = {
@@ -20,12 +20,9 @@ const ROUND_MESSAGES = {
   5: "Clean. That's the standard.",
 };
 
-// ─── Skateboard Visualizer ─────────────────────────────────────────────────
+// (SkateboardView replaced by SkateboardGL component)
 
-const DECK_W = 96;
-const DECK_H = 220;
-
-function SkateboardView({ stepIndex, phase, trickColor, isDetecting, lastResult }) {
+function _REMOVED({ stepIndex, phase, trickColor, isDetecting, lastResult }) {
   const rotX  = useRef(new Animated.Value(0)).current;
   const rotY  = useRef(new Animated.Value(0)).current;
   const rotZ  = useRef(new Animated.Value(0)).current;
@@ -447,13 +444,12 @@ export default function PracticeScreen({ navigation }) {
         </View>
       )}
 
-      {/* Board visualizer */}
-      <SkateboardView
+      {/* 3D Board */}
+      <SkateboardGL
         stepIndex={stepIndex}
         phase={phase}
         trickColor={currentTrick.color}
-        isDetecting={detecting}
-        lastResult={lastResult}
+        style={styles.glView}
       />
 
       {/* Instruction */}
@@ -575,6 +571,7 @@ const styles = StyleSheet.create({
   },
   sensorText: { fontSize: 11, fontWeight: '600' },
 
+  glView: { height: 240, marginHorizontal: 0 },
   ctaWrap: { paddingHorizontal: 20, paddingTop: 4 },
   ctaBtn: {
     backgroundColor: '#d4ff3d', borderRadius: 12,
