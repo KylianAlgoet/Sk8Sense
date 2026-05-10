@@ -25,6 +25,7 @@ export default function SessionSummaryScreen({ navigation, route }) {
   const tpm = session.duration > 0
     ? (session.tricks.length / (session.duration / 60)).toFixed(1)
     : '0.0';
+  const maxImpact = session.maxImpact ? (session.maxImpact / 9.81).toFixed(1) : null;
 
   return (
     <View style={styles.container}>
@@ -47,6 +48,12 @@ export default function SessionSummaryScreen({ navigation, route }) {
           <Text style={styles.statValue}>{tpm}</Text>
           <Text style={styles.statLabel}>Tricks/min</Text>
         </View>
+        {maxImpact && (
+          <View style={styles.statBox}>
+            <Text style={[styles.statValue, { color: '#FF9800' }]}>{maxImpact}g</Text>
+            <Text style={styles.statLabel}>Max impact</Text>
+          </View>
+        )}
       </View>
 
       {/* Trick breakdown */}
