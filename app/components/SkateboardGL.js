@@ -1,320 +1,306 @@
-import { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet, Easing } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { WebView } from 'react-native-webview';
+import { Asset } from 'expo-asset';
+import * as FileSystem from 'expo-file-system';
 
-const W = 110;   // deck width
-const H = 250;   // deck height
+// Three.js r134 — last version with non-module CDN scripts (easiest for WebView)
+const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.134.0/build/three.min.js';
+const GLTF_CDN  = 'https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/loaders/GLTFLoader.js';
 
-function useLoop(create, deps) {
-  const ref = useRef(null);
-  useEffect(() => {
-    ref.current = create();
-    return () => ref.current && ref.current.stop();
-  }, deps);
+function buildHTML(trickColor) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0a0a0a; overflow:hidden; width:100vw; height:100vh; }
+  canvas { display:block; width:100%; height:100%; }
+  #loader { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#0a0a0a; }
+  .dot { width:8px; height:8px; border-radius:50%; background:${trickColor}; margin:0 4px; animation:pulse 0.9s infinite; }
+  .dot:nth-child(2) { animation-delay:0.3s; }
+  .dot:nth-child(3) { animation-delay:0.6s; }
+  @keyframes pulse { 0%,80%,100%{transform:scale(0);opacity:0.3} 40%{transform:scale(1);opacity:1} }
+</style>
+</head>
+<body>
+<div id="loader"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+<canvas id="c"></canvas>
+
+<script src="${THREE_CDN}"></script>
+<script src="${GLTF_CDN}"></script>
+<script>
+var ACCENT = new THREE.Color('${trickColor}');
+var canvas = document.getElementById('c');
+var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x0a0a0a, 1);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+
+var scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0a0a0a, 0.12);
+
+var camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.01, 50);
+camera.position.set(0, 1.6, 4.2);
+camera.lookAt(0, 0.2, 0);
+
+// Lights
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
+var key = new THREE.DirectionalLight(0xffffff, 1.8);
+key.position.set(3, 7, 5);
+scene.add(key);
+
+var fill = new THREE.DirectionalLight(0x8899cc, 0.35);
+fill.position.set(-4, 1, -3);
+scene.add(fill);
+
+var rim = new THREE.DirectionalLight(0xffffff, 0.5);
+rim.position.set(0, -2, -4);
+scene.add(rim);
+
+var accentLight = new THREE.PointLight(ACCENT, 0.0, 5);
+accentLight.position.set(0, 0.5, 0);
+scene.add(accentLight);
+
+// Ground plane
+var ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(8, 16),
+  new THREE.MeshPhongMaterial({ color: 0x111111, shininess: 8 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -1.1;
+scene.add(ground);
+
+// Fake shadow
+var shadowMesh = new THREE.Mesh(
+  new THREE.PlaneGeometry(1.2, 2.8),
+  new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.5 })
+);
+shadowMesh.rotation.x = -Math.PI / 2;
+shadowMesh.position.y = -1.09;
+scene.add(shadowMesh);
+
+var model = null;
+var stepIndex = 0;
+var phase = 'steps';
+var t = 0;
+var modelReady = false;
+
+function loadFromBase64(b64) {
+  var binary = atob(b64);
+  var bytes = new Uint8Array(binary.length);
+  for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+  var loader = new THREE.GLTFLoader();
+  loader.parse(bytes.buffer, '', function(gltf) {
+    model = gltf.scene;
+
+    // Center + scale
+    var box = new THREE.Box3().setFromObject(model);
+    var center = box.getCenter(new THREE.Vector3());
+    var size = box.getSize(new THREE.Vector3());
+    var maxDim = Math.max(size.x, size.y, size.z);
+    var s = 2.2 / maxDim;
+    model.scale.set(s, s, s);
+    model.position.set(-center.x * s, -center.y * s, -center.z * s);
+    model.rotation.y = Math.PI; // face camera
+
+    scene.add(model);
+    document.getElementById('loader').style.display = 'none';
+    modelReady = true;
+  }, function(err) {
+    console.error('GLTF load error:', err);
+  });
+}
+
+// Message handler (RN → WebView)
+function onMessage(event) {
+  try {
+    var data = JSON.parse(event.data);
+    if (data.type === 'model') loadFromBase64(data.base64);
+    else if (data.type === 'update') { stepIndex = data.stepIndex || 0; phase = data.phase || 'steps'; }
+  } catch(e) {}
+}
+document.addEventListener('message', onMessage);
+window.addEventListener('message', onMessage);
+
+// Notify RN that WebView is ready
+function notifyReady() {
+  try { window.ReactNativeWebView.postMessage('ready'); } catch(e) {}
+}
+setTimeout(notifyReady, 200);
+
+// Animation
+function animate() {
+  requestAnimationFrame(animate);
+  t += 0.016;
+
+  if (!modelReady || !model) {
+    renderer.render(scene, camera);
+    return;
+  }
+
+  accentLight.intensity = 0;
+
+  if (phase === 'combine') {
+    var cy = (t % 4.2) / 4.2;
+    if (cy < 0.12) {
+      model.rotation.x = cy * -8;
+      model.position.y = 0;
+      accentLight.intensity = cy * 12;
+    } else if (cy < 0.32) {
+      var p = (cy - 0.12) / 0.20;
+      model.position.y = p * 2.0;
+      model.rotation.x = -0.96 + p * 1.1;
+      accentLight.intensity = (1 - p) * 3;
+    } else if (cy < 0.62) {
+      var p = (cy - 0.32) / 0.30;
+      model.position.y = 2.0 - p * 0.4;
+      model.rotation.z = p * Math.PI * 2;
+      accentLight.intensity = Math.sin(p * Math.PI) * 4;
+    } else if (cy < 0.76) {
+      var p = (cy - 0.62) / 0.14;
+      model.position.y = 1.6 * (1 - p);
+      if (p > 0.82) accentLight.intensity = (p - 0.82) / 0.18 * 6;
+    } else {
+      model.position.y = 0;
+      model.rotation.z = 0;
+      model.rotation.x = Math.sin(t * 0.6) * 0.06;
+      model.rotation.y = Math.PI + Math.sin(t * 0.4) * 0.12;
+      accentLight.intensity = 0.6;
+    }
+
+  } else {
+    switch (stepIndex) {
+      case 0:
+        model.rotation.y = Math.PI + Math.sin(t * 0.35) * 0.18;
+        model.rotation.x = Math.sin(t * 0.5) * 0.06;
+        model.position.y = 0;
+        accentLight.intensity = 0.6 + Math.sin(t * 1.4) * 0.4;
+        break;
+      case 1:
+        var c1 = (t % 2.4) / 2.4;
+        if (c1 < 0.12) {
+          model.rotation.x = c1 * -10;
+          model.position.y = 0;
+          accentLight.intensity = c1 * 10;
+        } else if (c1 < 0.40) {
+          var p = (c1 - 0.12) / 0.28;
+          model.position.y = p * 1.6;
+          model.rotation.x = -1.2 + p * 1.3;
+          accentLight.intensity = (1 - p) * 3;
+        } else {
+          model.position.y = Math.max(0, 1.6 * (1 - (c1 - 0.40) / 0.60));
+          model.rotation.x = Math.sin(t * 0.5) * 0.05;
+          model.rotation.y = Math.PI + Math.sin(t * 0.4) * 0.1;
+        }
+        break;
+      case 2:
+        var c2 = (t % 2.6) / 2.6;
+        model.position.y = c2 < 0.5 ? c2 * 2 * 1.5 : 1.5 * (1 - (c2 - 0.5) * 2);
+        model.rotation.x = Math.sin(t * 1.1) * 0.22;
+        model.rotation.z = Math.sin(t * 0.7) * 0.08;
+        accentLight.intensity = 1.2 + Math.sin(t * 1.8) * 0.8;
+        break;
+      case 3:
+        model.position.y = 1.3 + Math.sin(t) * 0.32;
+        model.rotation.x = Math.sin(t * 0.85) * 0.14;
+        model.rotation.z = Math.sin(t * 0.65) * 0.1;
+        model.rotation.y = Math.PI + Math.sin(t * 0.5) * 0.14;
+        accentLight.intensity = 2.0 + Math.sin(t * 1.3) * 1.0;
+        break;
+      case 4:
+        var c4 = (t % 2.1) / 2.1;
+        model.position.y = c4 < 0.38 ? 1.5 * (1 - c4 / 0.38) : 0;
+        if (model.position.y < 0.05) accentLight.intensity = Math.max(0, 1 - (t % 2.1 - 0.8)) * 4;
+        model.rotation.x = Math.sin(t * 0.5) * 0.05;
+        model.rotation.y = Math.PI + Math.sin(t * 0.38) * 0.1;
+        break;
+      default:
+        model.rotation.y += 0.006;
+    }
+  }
+
+  // Shadow follows lift
+  var ly = model.position.y;
+  shadowMesh.scale.set(Math.max(0.4, 1 - ly * 0.15), Math.max(0.4, 1 - ly * 0.15), 1);
+  shadowMesh.material.opacity = Math.max(0.04, 0.5 - ly * 0.1);
+
+  renderer.render(scene, camera);
+}
+
+animate();
+</script>
+</body>
+</html>`;
 }
 
 export default function SkateboardGL({ stepIndex = 0, phase = 'steps', trickColor = '#4CAF50', style }) {
-  // 3-axis rotation + lift
-  const rotX = useRef(new Animated.Value(-12)).current;
-  const rotY = useRef(new Animated.Value(0)).current;
-  const rotZ = useRef(new Animated.Value(0)).current;
-  const lift = useRef(new Animated.Value(0)).current;
+  const webviewRef = useRef(null);
+  const [webviewReady, setWebviewReady] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const modelSentRef = useRef(false);
 
-  // Pressure zones
-  const tail = useRef(new Animated.Value(0)).current;
-  const nose = useRef(new Animated.Value(0)).current;
-  const heel = useRef(new Animated.Value(0)).current;
-  const toe  = useRef(new Animated.Value(0)).current;
-  const all  = useRef(new Animated.Value(0)).current;
-
-  const zones = [tail, nose, heel, toe, all];
-
-  function reset() {
-    rotX.stopAnimation(); rotY.stopAnimation();
-    rotZ.stopAnimation(); lift.stopAnimation();
-    zones.forEach((z) => z.stopAnimation());
-    rotX.setValue(-12); rotY.setValue(0);
-    rotZ.setValue(0);   lift.setValue(0);
-    zones.forEach((z) => z.setValue(0));
-  }
-
-  function pulse(anim, freq = 1200, lo = 0, hi = 1) {
-    return Animated.loop(Animated.sequence([
-      Animated.timing(anim, { toValue: hi, duration: freq, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-      Animated.timing(anim, { toValue: lo, duration: freq, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-    ]));
-  }
-
-  function wobble(anim, amp = 5, speed = 2000) {
-    return Animated.loop(Animated.sequence([
-      Animated.timing(anim, { toValue: amp,  duration: speed, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-      Animated.timing(anim, { toValue: -amp, duration: speed, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-    ]));
-  }
+  const sendModel = async () => {
+    if (modelSentRef.current) return;
+    try {
+      const asset = Asset.fromModule(require('../assets/skateboard.glb'));
+      await asset.downloadAsync();
+      const base64 = await FileSystem.readAsStringAsync(asset.localUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      webviewRef.current?.postMessage(JSON.stringify({ type: 'model', base64 }));
+      modelSentRef.current = true;
+      setTimeout(() => setLoading(false), 800);
+    } catch (e) {
+      console.error('Failed to load GLB:', e);
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    reset();
+    if (webviewReady) sendModel();
+  }, [webviewReady]);
 
-    if (phase === 'combine') {
-      // Full trick loop: pop → fly → spin → land
-      Animated.loop(Animated.sequence([
-        // Load / crouch
-        Animated.parallel([
-          Animated.timing(rotX, { toValue: -28, duration: 300, useNativeDriver: true }),
-          Animated.timing(tail, { toValue: 1,   duration: 250, useNativeDriver: true }),
-        ]),
-        // Pop + rise
-        Animated.parallel([
-          Animated.timing(lift, { toValue: -70, duration: 380, useNativeDriver: true }),
-          Animated.timing(rotX, { toValue: -12, duration: 300, useNativeDriver: true }),
-          Animated.timing(tail, { toValue: 0,   duration: 200, useNativeDriver: true }),
-          Animated.timing(heel, { toValue: 0.9, duration: 200, useNativeDriver: true }),
-        ]),
-        // Flip / spin
-        Animated.parallel([
-          Animated.timing(rotZ, { toValue: 360, duration: 380, useNativeDriver: true }),
-          Animated.timing(heel, { toValue: 0,   duration: 280, useNativeDriver: true }),
-        ]),
-        // Peak hang time
-        Animated.delay(120),
-        // Rotate back + descend
-        Animated.parallel([
-          Animated.timing(rotZ, { toValue: 0,   duration: 1,   useNativeDriver: true }),
-          Animated.timing(lift, { toValue: 0,   duration: 280, useNativeDriver: true }),
-        ]),
-        // Impact flash
-        Animated.timing(all, { toValue: 1, duration: 120, useNativeDriver: true }),
-        Animated.timing(all, { toValue: 0, duration: 350, useNativeDriver: true }),
-        Animated.delay(500),
-      ])).start();
-      return;
-    }
-
-    switch (stepIndex) {
-      case 0: // Foot Position
-        wobble(rotY, 7, 2200).start();
-        pulse(heel, 900, 0.1, 0.7).start();
-        pulse(tail, 700, 0.05, 0.45).start();
-        break;
-
-      case 1: // The Pop
-        Animated.loop(Animated.sequence([
-          Animated.parallel([
-            Animated.timing(tail, { toValue: 1,   duration: 220, useNativeDriver: true }),
-            Animated.timing(rotX, { toValue: -30, duration: 220, useNativeDriver: true }),
-          ]),
-          Animated.parallel([
-            Animated.timing(lift, { toValue: -55, duration: 320, useNativeDriver: true }),
-            Animated.timing(rotX, { toValue: -12, duration: 280, useNativeDriver: true }),
-            Animated.timing(tail, { toValue: 0,   duration: 180, useNativeDriver: true }),
-          ]),
-          Animated.timing(lift, { toValue: 0, duration: 320, useNativeDriver: true }),
-          Animated.delay(350),
-        ])).start();
-        wobble(rotY, 4, 2000).start();
-        break;
-
-      case 2: // The Slide
-        Animated.loop(Animated.sequence([
-          Animated.parallel([
-            Animated.timing(lift, { toValue: -50, duration: 420, useNativeDriver: true }),
-            Animated.timing(rotX, { toValue: -22, duration: 350, useNativeDriver: true }),
-            Animated.timing(heel, { toValue: 1,   duration: 350, useNativeDriver: true }),
-          ]),
-          Animated.parallel([
-            Animated.timing(rotX, { toValue: -12, duration: 350, useNativeDriver: true }),
-            Animated.timing(heel, { toValue: 0,   duration: 280, useNativeDriver: true }),
-          ]),
-          Animated.timing(lift, { toValue: 0, duration: 380, useNativeDriver: true }),
-          Animated.delay(280),
-        ])).start();
-        break;
-
-      case 3: // Level Out
-        Animated.loop(Animated.sequence([
-          Animated.parallel([
-            Animated.timing(lift, { toValue: -65, duration: 450, useNativeDriver: true }),
-            Animated.timing(nose, { toValue: 1,   duration: 380, useNativeDriver: true }),
-            Animated.timing(rotX, { toValue: 0,   duration: 380, useNativeDriver: true }),
-          ]),
-          wobble(rotY, 8, 500),
-          Animated.timing(nose, { toValue: 0, duration: 280, useNativeDriver: true }),
-          Animated.timing(lift, { toValue: 0, duration: 420, useNativeDriver: true }),
-          Animated.delay(300),
-        ])).start();
-        break;
-
-      case 4: // Landing
-        Animated.loop(Animated.sequence([
-          Animated.timing(lift, { toValue: -45, duration: 350, useNativeDriver: true }),
-          Animated.parallel([
-            Animated.timing(lift, { toValue: 0,   duration: 250, useNativeDriver: true }),
-            Animated.timing(all,  { toValue: 1,   duration: 150, useNativeDriver: true }),
-          ]),
-          Animated.timing(all, { toValue: 0, duration: 380, useNativeDriver: true }),
-          Animated.delay(480),
-        ])).start();
-        wobble(rotY, 3, 1800).start();
-        break;
-
-      default:
-        wobble(rotY, 5, 2000).start();
-    }
-
-    return reset;
-  }, [stepIndex, phase]);
-
-  // Interpolations
-  const rx = rotX.interpolate({ inputRange: [-360, 360], outputRange: ['-360deg', '360deg'] });
-  const ry = rotY.interpolate({ inputRange: [-360, 360], outputRange: ['-360deg', '360deg'] });
-  const rz = rotZ.interpolate({ inputRange: [-360, 360], outputRange: ['-360deg', '360deg'] });
-
-  // Shadow opacity / scale based on lift
-  const shadowOp = lift.interpolate({ inputRange: [-80, 0], outputRange: [0.08, 0.5] });
-  const shadowSc = lift.interpolate({ inputRange: [-80, 0], outputRange: [0.55, 1] });
+  useEffect(() => {
+    if (!webviewReady || !modelSentRef.current) return;
+    webviewRef.current?.postMessage(JSON.stringify({ type: 'update', stepIndex, phase }));
+  }, [stepIndex, phase, webviewReady]);
 
   return (
-    <View style={[s.scene, style]}>
-      {/* Drop shadow */}
-      <Animated.View style={[s.shadow, { opacity: shadowOp, transform: [{ scaleX: shadowSc }] }]} />
-
-      <Animated.View style={[s.boardRoot, {
-        transform: [
-          { perspective: 900 },
-          { rotateX: rx },
-          { rotateY: ry },
-          { rotateZ: rz },
-          { translateY: lift },
-        ],
-      }]}>
-
-        {/* ── Wheels (behind deck) ── */}
-        {[[-W / 2 - 7, 50], [W / 2 - 9, 50], [-W / 2 - 7, H - 66], [W / 2 - 9, H - 66]].map(([x, y], i) => (
-          <View key={i} style={[s.wheel, { left: x, top: y }]} />
-        ))}
-
-        {/* ── Trucks ── */}
-        <View style={[s.truck, { top: 46 }]} />
-        <View style={[s.truck, { bottom: 46 }]} />
-
-        {/* ── Deck ── */}
-        <View style={s.deck}>
-          {/* Veneer edge */}
-          <View style={s.veneer} />
-          {/* Grip tape */}
-          <View style={s.grip} />
-
-          {/* Concave lines */}
-          <View style={[s.concave, { left: 9 }]} />
-          <View style={[s.concave, { right: 9 }]} />
-
-          {/* Pressure zones */}
-          <Animated.View style={[s.zoneTail, { opacity: tail, backgroundColor: trickColor }]} />
-          <Animated.View style={[s.zoneNose, { opacity: nose, backgroundColor: trickColor }]} />
-          <Animated.View style={[s.zoneHeel, { opacity: heel, backgroundColor: trickColor }]} />
-          <Animated.View style={[s.zoneToe,  { opacity: toe,  backgroundColor: trickColor }]} />
-          <Animated.View style={[s.zoneAll,  { opacity: all,  backgroundColor: trickColor }]} />
-
-          {/* Back foot silhouette */}
-          <Animated.View style={[s.footBack, { opacity: tail.interpolate({ inputRange: [0, 1], outputRange: [0.18, 0.65] }) }]} />
-          {/* Front foot silhouette */}
-          <Animated.View style={[s.footFront, { opacity: heel.interpolate({ inputRange: [0, 1], outputRange: [0.12, 0.5] }) }]} />
-
-          {/* Bolts */}
-          {[{ top: 46, left: 22 }, { top: 46, right: 22 }, { bottom: 46, left: 22 }, { bottom: 46, right: 22 }].map((p, i) => (
-            <View key={i} style={[s.bolt, p]} />
-          ))}
-
-          {/* Center graphic line */}
-          <View style={s.centerLine} />
+    <View style={[s.container, style]}>
+      <WebView
+        ref={webviewRef}
+        source={{ html: buildHTML(trickColor) }}
+        originWhitelist={['*']}
+        javaScriptEnabled
+        mediaPlaybackRequiresUserAction={false}
+        allowsInlineMediaPlayback
+        style={s.webview}
+        onMessage={(e) => {
+          if (e.nativeEvent.data === 'ready') setWebviewReady(true);
+        }}
+      />
+      {loading && (
+        <View style={s.loadingOverlay}>
+          <ActivityIndicator color={trickColor} size="large" />
         </View>
-      </Animated.View>
+      )}
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  scene: {
-    alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 16,
-  },
-  boardRoot: {
-    width: W + 24, height: H + 24,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  shadow: {
-    position: 'absolute', bottom: 4,
-    width: W * 0.85, height: 18,
-    backgroundColor: '#000', borderRadius: 40,
-  },
-
-  // Wheels
-  wheel: {
-    position: 'absolute', width: 18, height: 18,
-    borderRadius: 9, backgroundColor: '#3a3a3a',
-    borderWidth: 2, borderColor: '#555',
-  },
-  // Trucks (horizontal bars)
-  truck: {
-    position: 'absolute', left: -6,
-    width: W + 12, height: 11,
-    backgroundColor: '#6a6a6a', borderRadius: 5,
-    zIndex: 1,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4, elevation: 3,
-  },
-
-  // Deck
-  deck: {
-    width: W, height: H,
-    borderRadius: 24,
-    backgroundColor: '#2a1508',
-    overflow: 'hidden',
-    zIndex: 2,
-    borderWidth: 2, borderColor: '#4a2e12',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6, elevation: 6,
-  },
-  veneer: {
+  container: { overflow: 'hidden', backgroundColor: '#0a0a0a' },
+  webview: { backgroundColor: '#0a0a0a', flex: 1 },
+  loadingOverlay: {
     position: 'absolute', inset: 0,
-    borderRadius: 23,
-    backgroundColor: '#3d2010',
-  },
-  grip: {
-    position: 'absolute', inset: 5,
-    borderRadius: 19,
-    backgroundColor: '#0e0e0e',
-  },
-  concave: {
-    position: 'absolute', top: 16, bottom: 16,
-    width: 3, backgroundColor: '#1a1a1a', borderRadius: 2, zIndex: 3,
-  },
-
-  // Pressure zones
-  zoneTail:  { position: 'absolute', bottom: 10, left: '18%', right: '18%', height: 52, borderRadius: 16 },
-  zoneNose:  { position: 'absolute', top: 10,    left: '18%', right: '18%', height: 46, borderRadius: 16 },
-  zoneHeel:  { position: 'absolute', left: 7,    top: '30%',  bottom: '28%', width: 30, borderRadius: 15 },
-  zoneToe:   { position: 'absolute', right: 7,   top: '30%',  bottom: '28%', width: 30, borderRadius: 15 },
-  zoneAll:   { position: 'absolute', inset: 8,   borderRadius: 18 },
-
-  // Foot silhouettes
-  footBack: {
-    position: 'absolute', bottom: 26, left: '18%', right: '18%',
-    height: 28, backgroundColor: '#fff', borderRadius: 10,
-  },
-  footFront: {
-    position: 'absolute', top: '36%', left: '12%', right: '12%',
-    height: 22, backgroundColor: '#fff', borderRadius: 8,
-    transform: [{ rotate: '-7deg' }],
-  },
-
-  bolt: {
-    position: 'absolute', width: 6, height: 6,
-    borderRadius: 3, backgroundColor: '#5a3a18',
-    borderWidth: 1, borderColor: '#8a6030',
-  },
-  centerLine: {
-    position: 'absolute', left: '48%', right: '48%',
-    top: 80, bottom: 80,
-    backgroundColor: '#1a1a1a', borderRadius: 2,
+    backgroundColor: '#0a0a0a',
+    alignItems: 'center', justifyContent: 'center',
   },
 });

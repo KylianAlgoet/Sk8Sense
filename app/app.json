@@ -48,7 +48,8 @@
           ],
           "bluetoothAlwaysPermission": "SK8Sense needs Bluetooth to connect to your skateboard sensor."
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "extra": {
       "eas": {
