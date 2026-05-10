@@ -5,14 +5,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TRICKS, DIFFICULTIES } from '../data/tricks';
+import useTrickStore from '../store/trickStore';
 
 const FILTERS = [
-  { key: 'all', label: 'All' },
-  { key: 1, label: '★' },
-  { key: 2, label: '★★' },
-  { key: 3, label: '★★★' },
-  { key: 4, label: '★★★★' },
-  { key: 5, label: '★★★★★' },
+  { key: 'all', label: 'All', color: '#e94560' },
+  { key: 1, label: 'Beginner', color: '#4CAF50' },
+  { key: 2, label: 'Easy', color: '#8BC34A' },
+  { key: 3, label: 'Intermediate', color: '#FF9800' },
+  { key: 4, label: 'Advanced', color: '#F44336' },
+  { key: 5, label: 'Expert', color: '#9C27B0' },
 ];
 
 const CATEGORIES = ['All', 'Flatground', 'Balance', 'Rotation', 'Grinds', 'Switch'];
@@ -80,12 +81,22 @@ function TrickModal({ trick, onClose }) {
   );
 }
 
-export default function LearningScreen() {
+export default function LearningScreen({ navigation }) {
+  const { selectTrick } = useTrickStore();
   const [search, setSearch] = useState('');
   const [diffFilter, setDiffFilter] = useState('all');
   const [catFilter, setCatFilter] = useState('All');
   const [selectedTrick, setSelectedTrick] = useState(null);
   const [showCatFilter, setShowCatFilter] = useState(false);
+
+  const handleTrickPress = (trick) => {
+    if (trick.detectable) {
+      selectTrick(trick.id);
+      navigation.navigate('TrickIntro');
+    } else {
+      setSelectedTrick(trick);
+    }
+  };
 
   const filtered = useMemo(() => {
     return TRICKS.filter((t) => {
@@ -134,26 +145,24 @@ export default function LearningScreen() {
         )}
       </View>
 
-      {/* Difficulty filter */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-      >
+      {/* Difficulty + category filters */}
+      <View style={styles.filterWrap}>
         {FILTERS.map((f) => {
           const active = diffFilter === f.key;
-          const diff = typeof f.key === 'number' ? DIFFICULTIES.find((d) => d.level === f.key) : null;
           return (
             <TouchableOpacity
               key={f.key}
               style={[
                 styles.filterChip,
-                active && styles.filterChipActive,
-                active && diff && { backgroundColor: diff.color, borderColor: diff.color },
+                { borderColor: active ? f.color : '#252535' },
+                active && { backgroundColor: f.color + '28', borderColor: f.color },
               ]}
               onPress={() => setDiffFilter(active ? 'all' : f.key)}
             >
-              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+              {f.key !== 'all' && (
+                <View style={[styles.filterDot, { backgroundColor: f.color }]} />
+              )}
+              <Text style={[styles.filterChipText, active && { color: f.color, fontWeight: 'bold' }]}>
                 {f.label}
               </Text>
             </TouchableOpacity>
@@ -161,15 +170,19 @@ export default function LearningScreen() {
         })}
 
         <TouchableOpacity
-          style={[styles.filterChip, catFilter !== 'All' && styles.filterChipActive]}
+          style={[
+            styles.filterChip,
+            { borderColor: catFilter !== 'All' ? '#e94560' : '#252535' },
+            catFilter !== 'All' && { backgroundColor: '#e9456028', borderColor: '#e94560' },
+          ]}
           onPress={() => setShowCatFilter(true)}
         >
-          <Ionicons name="funnel-outline" size={12} color={catFilter !== 'All' ? '#fff' : '#aaa'} />
-          <Text style={[styles.filterChipText, catFilter !== 'All' && styles.filterChipTextActive]}>
+          <Ionicons name="funnel-outline" size={11} color={catFilter !== 'All' ? '#e94560' : '#555'} />
+          <Text style={[styles.filterChipText, catFilter !== 'All' && { color: '#e94560', fontWeight: 'bold' }]}>
             {catFilter !== 'All' ? catFilter : 'Type'}
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
 
       {/* Category filter modal */}
       <Modal visible={showCatFilter} transparent animationType="fade" onRequestClose={() => setShowCatFilter(false)}>
@@ -223,8 +236,8 @@ export default function LearningScreen() {
               {group.tricks.map((trick) => (
                 <TouchableOpacity
                   key={trick.id}
-                  style={styles.card}
-                  onPress={() => setSelectedTrick(trick)}
+                  style={[styles.card, trick.detectable && styles.cardDetectable]}
+                  onPress={() => handleTrickPress(trick)}
                   activeOpacity={0.7}
                 >
                   <View style={styles.cardLeft}>
@@ -303,18 +316,18 @@ const styles = StyleSheet.create({
   searchIcon: {},
   searchInput: { flex: 1, color: '#fff', fontSize: 15 },
 
-  filterRow: {
-    paddingHorizontal: 24, paddingVertical: 12, gap: 8,
+  filterWrap: {
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center',
+    paddingHorizontal: 24, paddingTop: 4, paddingBottom: 10, gap: 8,
   },
   filterChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 14, paddingVertical: 7,
-    borderRadius: 20, borderWidth: 1, borderColor: '#333',
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 20, borderWidth: 1,
     backgroundColor: '#16213e',
   },
-  filterChipActive: { backgroundColor: '#e94560', borderColor: '#e94560' },
-  filterChipText: { color: '#aaa', fontSize: 12, fontWeight: '600' },
-  filterChipTextActive: { color: '#fff' },
+  filterDot: { width: 7, height: 7, borderRadius: 3.5 },
+  filterChipText: { color: '#666', fontSize: 12, fontWeight: '600' },
 
   catOverlay: { flex: 1, backgroundColor: '#000000aa', justifyContent: 'flex-end' },
   catSheet: {
@@ -346,6 +359,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#16213e', borderRadius: 12,
     padding: 14, marginBottom: 6,
     flexDirection: 'row', alignItems: 'center',
+  },
+  cardDetectable: {
+    borderWidth: 1, borderColor: '#e9456030',
   },
   cardLeft: { flex: 1 },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 5 },

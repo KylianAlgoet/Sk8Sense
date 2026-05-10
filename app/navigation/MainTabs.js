@@ -2,6 +2,7 @@ import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import HomeScreen from '../screens/HomeScreen';
 import ConnectScreen from '../screens/ConnectScreen';
@@ -9,10 +10,14 @@ import DashboardScreen from '../screens/DashboardScreen';
 import SessionSummaryScreen from '../screens/SessionSummaryScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import LearningScreen from '../screens/LearningScreen';
+import TrickIntroScreen from '../screens/TrickIntroScreen';
+import PracticeScreen from '../screens/PracticeScreen';
+import PracticeSummaryScreen from '../screens/PracticeSummaryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 const BoardStack = createNativeStackNavigator();
+const LearnStack = createNativeStackNavigator();
 const ProfileStack = createNativeStackNavigator();
 
 function BoardNavigator() {
@@ -26,6 +31,17 @@ function BoardNavigator() {
   );
 }
 
+function LearnNavigator() {
+  return (
+    <LearnStack.Navigator screenOptions={{ headerShown: false }}>
+      <LearnStack.Screen name="TrickList" component={LearningScreen} />
+      <LearnStack.Screen name="TrickIntro" component={TrickIntroScreen} />
+      <LearnStack.Screen name="Practice" component={PracticeScreen} />
+      <LearnStack.Screen name="PracticeSummary" component={PracticeSummaryScreen} />
+    </LearnStack.Navigator>
+  );
+}
+
 function ProfileNavigator() {
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
@@ -36,8 +52,10 @@ function ProfileNavigator() {
 }
 
 function CustomTabBar({ state, descriptors, navigation }) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.tabBar}>
+    <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
         const isFocused = state.index === index;
@@ -49,9 +67,9 @@ function CustomTabBar({ state, descriptors, navigation }) {
         };
 
         let iconName;
-        if (route.name === 'Board') iconName = isFocused ? 'radio' : 'radio-outline';
+        if (route.name === 'Board') iconName = isFocused ? 'stats-chart' : 'stats-chart-outline';
         else if (route.name === 'Learn') iconName = isFocused ? 'book' : 'book-outline';
-        else if (route.name === 'Profile') iconName = isFocused ? 'person' : 'person-outline';
+        else if (route.name === 'Profile') iconName = isFocused ? 'person-circle' : 'person-circle-outline';
 
         if (isMiddle) {
           return (
@@ -64,7 +82,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
               <View style={[styles.middleCircle, isFocused && styles.middleCircleActive]}>
                 <Ionicons name={iconName} size={26} color="#fff" />
               </View>
-              <Text style={styles.middleLabel}>LEARN</Text>
+              <Text style={[styles.middleLabel, isFocused && { color: '#fff' }]}>LEARN</Text>
             </TouchableOpacity>
           );
         }
@@ -98,7 +116,7 @@ export default function MainTabs() {
       screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Board" component={BoardNavigator} options={{ tabBarLabel: 'Board' }} />
-      <Tab.Screen name="Learn" component={LearningScreen} options={{ tabBarLabel: 'Learn' }} />
+      <Tab.Screen name="Learn" component={LearnNavigator} options={{ tabBarLabel: 'Learn' }} />
       <Tab.Screen name="Profile" component={ProfileNavigator} options={{ tabBarLabel: 'Profile' }} />
     </Tab.Navigator>
   );
@@ -107,20 +125,17 @@ export default function MainTabs() {
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#0f0f1a',
+    backgroundColor: '#0d0d1a',
     borderTopWidth: 1,
     borderTopColor: '#1a1a2e',
-    height: 72,
-    alignItems: 'center',
+    paddingTop: 10,
     paddingHorizontal: 16,
-    paddingBottom: 8,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
-    paddingTop: 6,
+    gap: 4,
   },
   tabLabel: {
     color: '#444',
@@ -131,12 +146,11 @@ const styles = StyleSheet.create({
   tabLabelActive: {
     color: '#e94560',
   },
-
   middleBtn: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -28,
+    marginTop: -26,
     gap: 4,
   },
   middleCircle: {
@@ -146,11 +160,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#e94560',
     alignItems: 'center',
     justifyContent: 'center',
+    elevation: 8,
     shadowColor: '#e94560',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 8,
-    elevation: 8,
   },
   middleCircleActive: {
     backgroundColor: '#c73550',
