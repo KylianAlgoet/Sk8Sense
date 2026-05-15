@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Animated, Easing } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Asset } from 'expo-asset';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const THREE_CDN  = 'https://cdn.jsdelivr.net/npm/three@0.134.0/build/three.min.js';
 const GLTF_CDN   = 'https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/loaders/GLTFLoader.js';
@@ -93,30 +94,29 @@ const fb = StyleSheet.create({
   sensorTxt:  { color:'rgba(100,200,255,0.75)', fontSize:9, fontWeight:'bold' },
 });
 
-// ─── Three.js HTML scene (uses fetch + local URI) ────────────────────────────
-function buildViewerHTML(modelUri) {
-  return `<!DOCTYPE html>
+// ─── Three.js HTML scene (base64 injected via postMessage) ──────────────────
+const VIEWER_HTML = `<!DOCTYPE html>
 <html><head>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   body{background:#0d0d1a;overflow:hidden;touch-action:none}
   canvas{display:block;width:100vw;height:100vh}
-  #st{position:fixed;top:6px;left:8px;font:9px/1.4 monospace;color:#555;pointer-events:none}
-  #ld{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0d0d1a;gap:8px}
-  .sp{width:28px;height:28px;border:2px solid #333;border-top-color:#4488ff;border-radius:50%;animation:spin .8s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  #ld p{color:#444;font:11px sans-serif;letter-spacing:1px}
+  #ld{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0d0d1a;gap:10px}
+  .sp{width:26px;height:26px;border:2px solid #222;border-top-color:#4488ff;border-radius:50%;animation:s .8s linear infinite}
+  @keyframes s{to{transform:rotate(360deg)}}
+  #ld p{color:#444;font:10px sans-serif;letter-spacing:2px}
+  #dbg{position:fixed;top:4px;left:6px;font:9px monospace;color:#4488ff;pointer-events:none;opacity:0.7}
 </style>
 </head><body>
-<div id="ld"><div class="sp"></div><p>LOADING 3D BOARD</p></div>
-<div id="st"></div>
+<div id="ld"><div class="sp"></div><p id="ldtxt">LOADING</p></div>
+<div id="dbg"></div>
 <canvas id="c"></canvas>
 <script src="${THREE_CDN}"></script>
 <script src="${GLTF_CDN}"></script>
 <script src="${ORBIT_CDN}"></script>
 <script>
-var W=innerWidth, H=innerHeight, DEG=Math.PI/180;
+var W=innerWidth,H=innerHeight,DEG=Math.PI/180;
 var renderer=new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true});
 renderer.setSize(W,H); renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setClearColor(0x0d0d1a); renderer.outputEncoding=THREE.sRGBEncoding;
@@ -125,120 +125,103 @@ renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1
 var scene=new THREE.Scene();
 scene.fog=new THREE.Fog(0x0d0d1a,14,24);
 
-var camera=new THREE.PerspectiveCamera(46,W/H,0.01,50);
-camera.position.set(0,3,6); camera.lookAt(0,0,0);
+var camera=new THREE.PerspectiveCamera(50,W/H,0.01,50);
+// 3/4 view from the side-front-above — good for a flat skateboard
+camera.position.set(2.5,2.0,4.5);
+camera.lookAt(0,0,0);
 
 var controls=new THREE.OrbitControls(camera,renderer.domElement);
 controls.enableDamping=true; controls.dampingFactor=0.08;
 controls.enableZoom=true; controls.enablePan=false;
-controls.minPolarAngle=0.1; controls.maxPolarAngle=Math.PI*0.7;
-controls.autoRotate=false;
+controls.minPolarAngle=0.1; controls.maxPolarAngle=Math.PI*0.75;
+controls.update();
 
-// Lights
 scene.add(new THREE.AmbientLight(0xffffff,0.65));
 var key=new THREE.DirectionalLight(0xffffff,2.0); key.position.set(4,8,5); scene.add(key);
 var fill=new THREE.DirectionalLight(0x8899cc,0.4); fill.position.set(-4,2,-3); scene.add(fill);
-var rim=new THREE.DirectionalLight(0xffffff,0.45); rim.position.set(0,-2,-5); scene.add(rim);
 var glow=new THREE.PointLight(0x4488ff,0,7); glow.position.set(0,1,0); scene.add(glow);
 
-// Ground
 var ground=new THREE.Mesh(new THREE.PlaneGeometry(12,20),
-  new THREE.MeshPhongMaterial({color:0x0f0f1a,shininess:3}));
-ground.rotation.x=-Math.PI/2; ground.position.y=-1.5; scene.add(ground);
+  new THREE.MeshPhongMaterial({color:0x0f0f1a}));
+ground.rotation.x=-Math.PI/2; ground.position.y=-1.6; scene.add(ground);
 
 var shadow=new THREE.Mesh(new THREE.PlaneGeometry(2.4,5.8),
-  new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.55}));
-shadow.rotation.x=-Math.PI/2; shadow.position.y=-1.49; scene.add(shadow);
+  new THREE.MeshBasicMaterial({color:0,transparent:true,opacity:0.5}));
+shadow.rotation.x=-Math.PI/2; shadow.position.y=-1.59; scene.add(shadow);
 
-// Board group — sensor rotation applied here
 var boardGroup=new THREE.Group(); scene.add(boardGroup);
-var model=null, modelReady=false;
-var tP=0,tR=0,tY=0, cP=0,cR=0,cY=0;
-var simMode=false, t=0;
+var model=null,modelReady=false,t=0;
+var tP=0,tR=0,tY=0,cP=0,cR=0,cY=0,simMode=false;
+var dbg=document.getElementById('dbg');
 
-function loadModel(){
-  var st=document.getElementById('st');
-  st.textContent='Fetching model...';
-  fetch('${modelUri}')
-    .then(function(r){ return r.arrayBuffer(); })
-    .then(function(buf){
-      st.textContent='Parsing...';
-      var loader=new THREE.GLTFLoader();
-      loader.parse(buf,'',function(gltf){
-        model=gltf.scene;
-        // Auto-orient: detect longest axis and orient board flat/horizontal
-        var rawBox=new THREE.Box3().setFromObject(model);
-        var rawSize=rawBox.getSize(new THREE.Vector3());
-        var sx=rawSize.x, sy=rawSize.y, sz=rawSize.z;
-        st.textContent='x:'+sx.toFixed(2)+' y:'+sy.toFixed(2)+' z:'+sz.toFixed(2);
-        // If Y is tallest → model is standing → lay flat
-        if(sy>sx*1.3 && sy>sz*1.3) model.rotation.x=-Math.PI/2;
-        // If X is longest horizontal dimension → rotate so long axis = Z
-        if(sx>sz*1.5 && !(sy>sx*1.3)) model.rotation.y=Math.PI/2;
-        // Center + scale to ~2 units
-        var box=new THREE.Box3().setFromObject(model);
-        var size=box.getSize(new THREE.Vector3());
-        var center=box.getCenter(new THREE.Vector3());
-        var s=2.0/Math.max(size.x,size.y,size.z);
-        model.scale.setScalar(s);
-        model.position.set(-center.x*s,-center.y*s,-center.z*s);
-        boardGroup.add(model);
-        // Fit camera
-        var fb2=new THREE.Box3().setFromObject(boardGroup);
-        var sp=new THREE.Sphere(); fb2.getBoundingSphere(sp);
-        var r=sp.radius;
-        camera.position.set(sp.center.x+r*0.5, sp.center.y+r*1.8, sp.center.z+r*3.2);
-        camera.lookAt(sp.center);
-        controls.target.copy(sp.center);
-        controls.minDistance=r*1.2; controls.maxDistance=r*7;
-        controls.update();
-        setTimeout(function(){st.textContent='';},3000);
-        document.getElementById('ld').style.display='none';
-        modelReady=true;
-        try{window.ReactNativeWebView.postMessage('loaded');}catch(e){}
-      },function(e){ st.textContent='Parse error: '+e.message; });
-    })
-    .catch(function(e){ st.textContent='Fetch error: '+e.message; });
+function parseModel(b64){
+  document.getElementById('ldtxt').textContent='PARSING';
+  var bin=atob(b64), bytes=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  new THREE.GLTFLoader().parse(bytes.buffer,'',function(gltf){
+    model=gltf.scene;
+    // Get raw bounds before any rotation
+    var rb=new THREE.Box3().setFromObject(model);
+    var rs=rb.getSize(new THREE.Vector3());
+    dbg.textContent='x:'+rs.x.toFixed(2)+' y:'+rs.y.toFixed(2)+' z:'+rs.z.toFixed(2);
+    // Board should be flat with longest axis horizontal
+    // If Y is tallest axis (>30% taller than others) → standing up → lay flat
+    if(rs.y > rs.x*1.3 && rs.y > rs.z*1.3){ model.rotation.x=-Math.PI/2; }
+    // If X is significantly longer than Z → rotate so long axis = Z (board points away from camera)
+    else if(rs.x > rs.z*1.4){ model.rotation.y=Math.PI/2; }
+    // Center and scale to 2 units
+    var box2=new THREE.Box3().setFromObject(model);
+    var sz2=box2.getSize(new THREE.Vector3());
+    var ct2=box2.getCenter(new THREE.Vector3());
+    var s=2.0/Math.max(sz2.x,sz2.y,sz2.z);
+    model.scale.setScalar(s); model.position.set(-ct2.x*s,-ct2.y*s,-ct2.z*s);
+    boardGroup.add(model);
+    // Refit camera from a nice 3/4-above-side angle
+    var fb=new THREE.Box3().setFromObject(boardGroup);
+    var sp=new THREE.Sphere(); fb.getBoundingSphere(sp);
+    var r=sp.radius;
+    // Position camera: to the side, above, in front
+    camera.position.set(sp.center.x+r*1.2, sp.center.y+r*1.0, sp.center.z+r*2.8);
+    camera.lookAt(sp.center);
+    controls.target.copy(sp.center);
+    controls.minDistance=r; controls.maxDistance=r*8;
+    controls.update();
+    setTimeout(function(){dbg.textContent='';},4000);
+    document.getElementById('ld').style.display='none';
+    modelReady=true;
+    try{window.ReactNativeWebView.postMessage('loaded');}catch(e){}
+  },function(e){ dbg.textContent='ERR:'+e.message; });
 }
-
-// Notify RN and wait for go-ahead
-setTimeout(function(){ try{window.ReactNativeWebView.postMessage('ready');}catch(e){} },100);
 
 function onMsg(e){
   try{
     var d=JSON.parse(e.data);
-    if(d.type==='go')    loadModel();
+    if(d.type==='model') parseModel(d.base64);
     if(d.type==='sensor'){ tP=d.pitch||0; tR=d.roll||0; tY=d.yaw||0; }
     if(d.type==='sim')   simMode=!!d.value;
-    if(d.type==='glow')  { glow.intensity=d.value||0; setTimeout(function(){glow.intensity=0;},600); }
-  }catch(e2){}
+    if(d.type==='glow')  { glow.intensity=3; setTimeout(function(){glow.intensity=0;},500); }
+  }catch(ex){}
 }
 document.addEventListener('message',onMsg);
 window.addEventListener('message',onMsg);
+setTimeout(function(){ try{window.ReactNativeWebView.postMessage('ready');}catch(e){} },100);
 
 function animate(){
-  requestAnimationFrame(animate);
-  t+=0.016; controls.update();
+  requestAnimationFrame(animate); t+=0.016; controls.update();
   if(modelReady){
-    if(simMode){
-      tP=Math.sin(t*0.7)*18; tR=Math.sin(t*0.5)*10;
-    }
-    // Smooth lerp — pitch/roll fast, yaw slower
+    if(simMode){ tP=Math.sin(t*0.7)*18; tR=Math.sin(t*0.5)*10; }
     cP+=(tP-cP)*0.18; cR+=(tR-cR)*0.18; cY+=(tY-cY)*0.10;
-    // Map sensor to board rotation
-    boardGroup.rotation.x=cP*DEG;   // pitch: nose up/down
-    boardGroup.rotation.z=-cR*DEG;  // roll: left/right tilt
-    boardGroup.rotation.y=cY*DEG;   // yaw (optional)
-    // Shadow follows lift
+    boardGroup.rotation.x=cP*DEG;
+    boardGroup.rotation.z=-cR*DEG;
+    boardGroup.rotation.y=cY*DEG;
     var ly=boardGroup.position.y;
-    shadow.scale.set(Math.max(0.4,1-ly*0.12),Math.max(0.4,1-ly*0.12),1);
-    shadow.material.opacity=Math.max(0.05,0.55-ly*0.1);
+    shadow.scale.set(Math.max(0.4,1-ly*0.1),Math.max(0.4,1-ly*0.1),1);
+    shadow.material.opacity=Math.max(0.05,0.5-ly*0.08);
   }
   renderer.render(scene,camera);
 }
 animate();
 </script></body></html>`;
-}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function LiveBoardViewer({ pitch=0, roll=0, yaw=0, trickGlow=0, simulated=false, style }) {
@@ -248,26 +231,26 @@ export default function LiveBoardViewer({ pitch=0, roll=0, yaw=0, trickGlow=0, s
   const [loaded, setLoaded]       = useState(false);
   const [use3D, setUse3D]         = useState(true);
 
-  // Load asset URI on mount
-  // In Expo dev mode: asset.uri is an HTTP URL served by Metro → WebView can fetch directly
-  // In production build: fall back to localUri (file://)
+  // Load GLB as base64 on mount (reliable cross-platform approach)
   useEffect(() => {
-    const asset = Asset.fromModule(require('../assets/skateboard.glb'));
-    // Dev mode: uri is immediately available as http://192.168.x.x:8081/assets/...
-    if (asset.uri && asset.uri.startsWith('http')) {
-      setModelUri(asset.uri);
-    } else {
-      // Production: download to local storage first
-      asset.downloadAsync()
-        .then(a => setModelUri(a.localUri))
-        .catch(() => setUse3D(false));
-    }
+    const load = async () => {
+      try {
+        const asset = Asset.fromModule(require('../assets/skateboard.glb'));
+        await asset.downloadAsync();
+        const b64 = await FileSystem.readAsStringAsync(asset.localUri, { encoding: 'base64' });
+        setModelUri(b64); // store base64, send to WebView when ready
+      } catch (e) {
+        console.warn('GLB load failed, using 2D fallback:', e);
+        setUse3D(false);
+      }
+    };
+    load();
   }, []);
 
-  // When WebView is ready AND we have the URI, tell it to load
+  // When WebView is ready AND base64 is loaded, send the model
   useEffect(() => {
     if (webReady && modelUri) {
-      webviewRef.current?.postMessage(JSON.stringify({ type: 'go' }));
+      webviewRef.current?.postMessage(JSON.stringify({ type: 'model', base64: modelUri }));
     }
   }, [webReady, modelUri]);
 
@@ -312,11 +295,8 @@ export default function LiveBoardViewer({ pitch=0, roll=0, yaw=0, trickGlow=0, s
     <View style={[s.container, style]}>
       <WebView
         ref={webviewRef}
-        source={{ html: buildViewerHTML(modelUri) }}
+        source={{ html: VIEWER_HTML }}
         originWhitelist={['*']}
-        allowFileAccess={true}
-        allowUniversalAccessFromFileURLs={true}
-        mixedContentMode="always"
         javaScriptEnabled
         style={s.webview}
         onMessage={e => {
