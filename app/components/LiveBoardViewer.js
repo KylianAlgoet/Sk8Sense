@@ -249,11 +249,19 @@ export default function LiveBoardViewer({ pitch=0, roll=0, yaw=0, trickGlow=0, s
   const [use3D, setUse3D]         = useState(true);
 
   // Load asset URI on mount
+  // In Expo dev mode: asset.uri is an HTTP URL served by Metro → WebView can fetch directly
+  // In production build: fall back to localUri (file://)
   useEffect(() => {
-    Asset.fromModule(require('../assets/skateboard.glb'))
-      .downloadAsync()
-      .then(a => setModelUri(a.localUri))
-      .catch(() => setUse3D(false));
+    const asset = Asset.fromModule(require('../assets/skateboard.glb'));
+    // Dev mode: uri is immediately available as http://192.168.x.x:8081/assets/...
+    if (asset.uri && asset.uri.startsWith('http')) {
+      setModelUri(asset.uri);
+    } else {
+      // Production: download to local storage first
+      asset.downloadAsync()
+        .then(a => setModelUri(a.localUri))
+        .catch(() => setUse3D(false));
+    }
   }, []);
 
   // When WebView is ready AND we have the URI, tell it to load
