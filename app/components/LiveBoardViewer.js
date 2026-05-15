@@ -176,18 +176,27 @@ function parseModel(b64){
     var s=2.0/Math.max(sz2.x,sz2.y,sz2.z);
     model.scale.setScalar(s); model.position.set(-ct2.x*s,-ct2.y*s,-ct2.z*s);
     boardGroup.add(model);
-    // Refit camera: high above + to side so full board is visible
+    // Camera: position perpendicular to long axis so full board length is visible
     var fb=new THREE.Box3().setFromObject(boardGroup);
-    var sp=new THREE.Sphere(); fb.getBoundingSphere(sp);
-    var r=sp.radius;
-    camera.fov=42; camera.updateProjectionMatrix();
-    // Position well above and to the side — prevents top-down zoom issue
-    camera.position.set(sp.center.x+r*1.0, sp.center.y+r*2.8, sp.center.z+r*4.5);
-    camera.lookAt(sp.center);
-    controls.target.copy(sp.center);
-    controls.minPolarAngle=Math.PI*0.22;  // prevent pure top-down
-    controls.maxPolarAngle=Math.PI*0.72;
-    controls.minDistance=r*1.5; controls.maxDistance=r*9;
+    var fs=fb.getSize(new THREE.Vector3());
+    var fc=fb.getCenter(new THREE.Vector3());
+    var longR=Math.max(fs.x,fs.y,fs.z);  // half of long dimension * 2
+    camera.fov=44; camera.updateProjectionMatrix();
+    // After rotation long axis should be Z → camera from SIDE (X offset) to see length
+    // If still X → camera from front-Z to see length
+    var camX, camY, camZ;
+    if(fs.z >= fs.x){
+      // Long axis = Z → look from the side
+      camX=fc.x+longR*2.2; camY=fc.y+longR*1.4; camZ=fc.z+longR*0.3;
+    } else {
+      // Long axis = X → look from the front
+      camX=fc.x+longR*0.3; camY=fc.y+longR*1.4; camZ=fc.z+longR*2.2;
+    }
+    camera.position.set(camX,camY,camZ);
+    camera.lookAt(fc);
+    controls.target.copy(fc);
+    controls.minPolarAngle=0.15; controls.maxPolarAngle=Math.PI*0.78;
+    controls.minDistance=longR; controls.maxDistance=longR*8;
     controls.update();
     setTimeout(function(){dbg.textContent='';},4000);
     document.getElementById('ld').style.display='none';
