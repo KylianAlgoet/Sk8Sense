@@ -176,15 +176,18 @@ function parseModel(b64){
     var s=2.0/Math.max(sz2.x,sz2.y,sz2.z);
     model.scale.setScalar(s); model.position.set(-ct2.x*s,-ct2.y*s,-ct2.z*s);
     boardGroup.add(model);
-    // Refit camera from a nice 3/4-above-side angle
+    // Refit camera: high above + to side so full board is visible
     var fb=new THREE.Box3().setFromObject(boardGroup);
     var sp=new THREE.Sphere(); fb.getBoundingSphere(sp);
     var r=sp.radius;
-    // Position camera: to the side, above, in front
-    camera.position.set(sp.center.x+r*1.2, sp.center.y+r*1.0, sp.center.z+r*2.8);
+    camera.fov=42; camera.updateProjectionMatrix();
+    // Position well above and to the side — prevents top-down zoom issue
+    camera.position.set(sp.center.x+r*1.0, sp.center.y+r*2.8, sp.center.z+r*4.5);
     camera.lookAt(sp.center);
     controls.target.copy(sp.center);
-    controls.minDistance=r; controls.maxDistance=r*8;
+    controls.minPolarAngle=Math.PI*0.22;  // prevent pure top-down
+    controls.maxPolarAngle=Math.PI*0.72;
+    controls.minDistance=r*1.5; controls.maxDistance=r*9;
     controls.update();
     setTimeout(function(){dbg.textContent='';},4000);
     document.getElementById('ld').style.display='none';
