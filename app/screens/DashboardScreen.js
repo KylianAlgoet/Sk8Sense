@@ -57,8 +57,9 @@ export default function DashboardScreen({ navigation }) {
   const [elapsed, setElapsed]       = useState(0);
   const [currentTip, setCurrentTip] = useState('');
   const [lastTrick, setLastTrick]   = useState('');
-  const [trickState, setTrickState] = useState('waiting');
-  const [trickGlow, setTrickGlow]   = useState(0);
+  const [trickState, setTrickState]     = useState('waiting');
+  const [trickGlow, setTrickGlow]       = useState(0);
+  const [calibApplied, setCalibApplied] = useState(false);
 
   const timerRef    = useRef(null);
   const tipTimerRef = useRef(null);
@@ -78,6 +79,8 @@ export default function DashboardScreen({ navigation }) {
   // ── Calibrate: store current orientation as zero ─────────────────────────
   const handleCalibrate = () => {
     calibRef.current = { pitch: raw.pitch, roll: raw.roll };
+    setCalibApplied(true);           // force re-render so livePitch/liveRoll update instantly
+    setTimeout(() => setCalibApplied(false), 1500);
   };
 
   function triggerTrickAnimation(trick) {
@@ -182,8 +185,13 @@ export default function DashboardScreen({ navigation }) {
       <View style={styles.header}>
         <Text style={styles.title}>Dashboard</Text>
         {IS_WEB && <Text style={styles.demoTag}>DEMO</Text>}
-        <TouchableOpacity style={styles.calibBtn} onPress={handleCalibrate}>
-          <Text style={styles.calibText}>◎ Calibrate</Text>
+        <TouchableOpacity
+          style={[styles.calibBtn, calibApplied && styles.calibBtnDone]}
+          onPress={handleCalibrate}
+        >
+          <Text style={[styles.calibText, calibApplied && { color: '#4CAF50' }]}>
+            {calibApplied ? '✓ Calibrated' : '◎ Calibrate'}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={handleDisconnect}>
           <Text style={styles.disconnectText}>✕</Text>
@@ -271,6 +279,7 @@ const styles = StyleSheet.create({
   title: { color:'#e94560', fontSize:20, fontWeight:'bold', flex:1 },
   demoTag: { color:'#FFD700', fontSize:10, fontWeight:'bold', letterSpacing:2 },
   calibBtn: { backgroundColor:'#16213e', borderRadius:6, paddingHorizontal:10, paddingVertical:5, borderWidth:1, borderColor:'#2a4a7a' },
+  calibBtnDone: { borderColor:'#4CAF5055', backgroundColor:'#0a2a0a' },
   calibText: { color:'#4488ff', fontSize:11, fontWeight:'600' },
   disconnectText: { color:'#555', fontSize:16, paddingLeft:4 },
   sessionBar: { flexDirection:'row', alignItems:'center', backgroundColor:'#16213e', borderRadius:10, padding:10, marginBottom:10, gap:10 },
@@ -280,7 +289,7 @@ const styles = StyleSheet.create({
   sessionBtn: { backgroundColor:'#e94560', paddingVertical:7, paddingHorizontal:14, borderRadius:6 },
   sessionBtnStop: { backgroundColor:'#555' },
   sessionBtnText: { color:'#fff', fontSize:12, fontWeight:'bold' },
-  boardViewer: { height:190, marginBottom:8 },
+  boardViewer: { height:220, marginBottom:8 },
   debugRow: { flexDirection:'row', gap:6, marginBottom:8 },
   debugCell: { flex:1, backgroundColor:'#16213e', borderRadius:7, padding:7, alignItems:'center' },
   debugLabel: { color:'#4488ff', fontSize:9, fontWeight:'bold', letterSpacing:1 },
