@@ -175,7 +175,7 @@ const b = StyleSheet.create({
 });
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function LiveBoardViewer({ pitch=0, roll=0, trickGlow=0, simulated=false, style }) {
+export default function LiveBoardViewer({ pitch=0, roll=0, trickGlow=0, simulated=false, fsrNose=0, fsrHeel=0, fsrToe=0, fsrTail=0, style }) {
   const webviewRef  = useRef(null);
   const [webReady, setWebReady]   = useState(false);
   const [loaded, setLoaded]       = useState(false);
@@ -221,11 +221,16 @@ export default function LiveBoardViewer({ pitch=0, roll=0, trickGlow=0, simulate
     webviewRef.current?.postMessage(JSON.stringify({ type:'sim', value:simulated }));
   }, [simulated, webReady]);
 
+  // Normalise FSR to 0-1 range (0–4095 ADC)
+  const fsrNorm = { nose: fsrNose/4095, heel: fsrHeel/4095, toe: fsrToe/4095, tail: fsrTail/4095 };
+  // Combined glow: trick detection OR actual FSR pressure
+  const glowActive = trickGlow > 0 || fsrNorm.tail > 0.4 || fsrNorm.nose > 0.4;
+
   // Fallback to 2D if GLB fails
   if (!use3D) {
     return (
       <View style={[s.container, style, { justifyContent:'center', alignItems:'center' }]}>
-        <Board2D pitch={pitch} roll={roll} trickGlow={trickGlow} simulated={simulated} />
+        <Board2D pitch={pitch} roll={roll} trickGlow={glowActive ? trickGlow + 1 : 0} simulated={simulated} />
         <Pill simulated={simulated} />
       </View>
     );

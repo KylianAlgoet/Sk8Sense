@@ -207,17 +207,21 @@ export default function DashboardScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Live 3D board — receives livePitch/liveRoll computed from fresh sensorData */}
+      {/* Live 3D board — pitch/roll + FSR zones */}
       <LiveBoardViewer
         pitch={livePitch}
         roll={liveRoll}
         yaw={0}
         trickGlow={trickGlow}
+        fsrNose={sensorData.f1 || 0}
+        fsrHeel={sensorData.f2 || 0}
+        fsrToe={sensorData.f3 || 0}
+        fsrTail={sensorData.f4 || 0}
         simulated={isSimulated}
         style={styles.boardViewer}
       />
 
-      {/* Sensor debug + trick state */}
+      {/* IMU + FSR debug row */}
       <View style={styles.debugRow}>
         <View style={styles.debugCell}>
           <Text style={styles.debugLabel}>PITCH</Text>
@@ -228,8 +232,10 @@ export default function DashboardScreen({ navigation }) {
           <Text style={styles.debugValue}>{liveRoll.toFixed(1)}°</Text>
         </View>
         <View style={styles.debugCell}>
-          <Text style={styles.debugLabel}>IMPACT</Text>
-          <Text style={styles.debugValue}>{liveImpact.toFixed(1)}</Text>
+          <Text style={styles.debugLabel}>TAIL</Text>
+          <Text style={[styles.debugValue, (sensorData.f4||0) > 1800 && { color: '#FF9800' }]}>
+            {Math.round((sensorData.f4||0) / 40.95)}%
+          </Text>
         </View>
         <View style={[styles.stateCell, { backgroundColor: TRICK_STATE_COLORS[trickState]+'22', borderColor: TRICK_STATE_COLORS[trickState]+'55' }]}>
           <Text style={[styles.stateText, { color: TRICK_STATE_COLORS[trickState] }]}>
