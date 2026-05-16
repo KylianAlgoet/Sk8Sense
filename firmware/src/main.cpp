@@ -179,6 +179,11 @@ void loop() {
         pCharacteristic->notify();
     }
 
-    Serial.println(buf);
+    // Only print when FSR is pressed (> 100)
+    if (f1 > 100 || f4 > 100) {
+        Serial.print("FSR DETECTED — nose:"); Serial.print(f1);
+        Serial.print(" tail:"); Serial.println(f4);
+    }
+
     delay(10);  // 100Hz
 }
