@@ -219,12 +219,10 @@ export default function DashboardScreen({ navigation }) {
       <LiveBoardViewer
         pitch={livePitch}
         roll={liveRoll}
-        yaw={0}
-        trickGlow={trickGlow}
-        fsrNose={sensorData.f1 || 0}
-        fsrHeel={sensorData.f2 || 0}
-        fsrToe={sensorData.f3 || 0}
-        fsrTail={sensorData.f4 || 0}
+        f1={sensorData.f1 || 0}
+        f2={sensorData.f2 || 0}
+        f3={sensorData.f3 || 0}
+        f4={sensorData.f4 || 0}
         simulated={isSimulated}
         style={styles.boardViewer}
       />
