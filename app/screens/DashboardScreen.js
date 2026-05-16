@@ -69,12 +69,17 @@ export default function DashboardScreen({ navigation }) {
   useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
 
   // ── Compute live values from sensorData directly in render ──────────────
-  // This avoids stale-closure issues — sensorData is always fresh from bleStore
-  const { ax, ay, az } = sensorData;
+  const { ax, ay, az, f1 = 0, f2 = 0, f3 = 0, f4 = 0 } = sensorData;
   const raw = calcPitchRoll(ax, ay, az);
   const livePitch  = raw.pitch - calibRef.current.pitch;
   const liveRoll   = raw.roll  - calibRef.current.roll;
   const liveImpact = Math.sqrt(ax*ax + ay*ay + az*az);
+  // FSR: threshold 300 to ignore floating-pin noise on unconnected sensors
+  const fsrNose = Math.max(0, f1 - 300);
+  const fsrHeel = Math.max(0, f2 - 300);
+  const fsrToe  = Math.max(0, f3 - 300);
+  const fsrTail = Math.max(0, f4 - 300);
+  const anyFsr  = fsrNose > 0 || fsrHeel > 0 || fsrToe > 0 || fsrTail > 0;
 
   // ── Calibrate: store current orientation as zero ─────────────────────────
   const handleCalibrate = () => {
@@ -132,12 +137,15 @@ export default function DashboardScreen({ navigation }) {
     if (isActiveRef.current && impact > maxImpactRef.current) maxImpactRef.current = impact;
 
     // App-side trick state machine (more granular than ESP32 firmware)
+    // FSR-enhanced trick state machine
+    const tailPressure = Math.max(0, (data.f4 || 0) - 300); // noise floor
     const prev = trickStateRef.current;
     let next = prev;
-    if      (impact > 20 && (data.az||0) < 5)          next = 'pop';
-    else if (impact < 4 && impact > 0)                  next = 'airtime';
-    else if (impact > 18 && prev === 'airtime')          next = 'landing';
-    else if (impact < 12 && impact > 0 && prev === 'landing') next = 'ollie';
+    // Pop: tail FSR spike OR high impact + low az
+    if      (tailPressure > 800 || (impact > 20 && (data.az||0) < 5)) next = 'pop';
+    else if (impact < 4 && impact > 0)                                 next = 'airtime';
+    else if (impact > 18 && prev === 'airtime')                        next = 'landing';
+    else if (impact < 12 && impact > 0 && prev === 'landing')          next = 'ollie';
     else if (impact < 12 && impact > 0 && (prev === 'ollie' || prev === 'pop')) next = 'waiting';
     if (next !== prev) { trickStateRef.current = next; setTrickState(next); }
 
@@ -244,6 +252,26 @@ export default function DashboardScreen({ navigation }) {
         </View>
       </View>
 
+      {/* FSR pressure bars */}
+      <View style={styles.fsrRow}>
+        {[
+          { label: 'NOSE', value: fsrNose, color: '#4CAF50' },
+          { label: 'HEEL', value: fsrHeel, color: '#2196F3' },
+          { label: 'TOE',  value: fsrToe,  color: '#FF9800' },
+          { label: 'TAIL', value: fsrTail, color: '#e94560' },
+        ].map(({ label, value, color }) => {
+          const pct = Math.min(value / 700, 1);
+          return (
+            <View key={label} style={styles.fsrCell}>
+              <Text style={[styles.fsrLabel, { color: pct > 0.1 ? color : '#333' }]}>{label}</Text>
+              <View style={styles.fsrBarBg}>
+                <View style={[styles.fsrBarFill, { width: `${Math.round(pct * 100)}%`, backgroundColor: color }]} />
+              </View>
+            </View>
+          );
+        })}
+      </View>
+
       {/* Trick banner */}
       {trickActive && (
         <Animated.View style={[styles.trickBanner, { backgroundColor: TRICK_COLORS[sensorData.trick]||'#FFD700' }, { transform:[{scale:bannerScale}], opacity:bannerOpacity }]}>
@@ -307,6 +335,11 @@ const styles = StyleSheet.create({
   tipBox: { backgroundColor:'#0f3460', borderRadius:8, paddingVertical:7, paddingHorizontal:12, marginBottom:8, flexDirection:'row', alignItems:'center', gap:8 },
   tipLabel: { color:'#FFD700', fontSize:10, fontWeight:'bold' },
   tipText: { color:'#fff', fontSize:12, flex:1 },
+  fsrRow: { flexDirection:'row', gap:6, marginBottom:8 },
+  fsrCell: { flex:1, gap:3 },
+  fsrLabel: { fontSize:8, fontWeight:'bold', letterSpacing:1, textAlign:'center' },
+  fsrBarBg: { height:5, backgroundColor:'#16213e', borderRadius:3, overflow:'hidden' },
+  fsrBarFill: { height:'100%', borderRadius:3 },
   feedTitle: { color:'#aaa', fontSize:10, fontWeight:'bold', letterSpacing:2, marginBottom:5 },
   feed: { flex:1 },
   feedEmpty: { color:'#444', textAlign:'center', marginTop:16, fontSize:12 },
