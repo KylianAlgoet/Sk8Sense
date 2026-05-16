@@ -20,8 +20,8 @@ const COACHING_TIPS = {
   heelflip: 'Kick out more with your heel',
 };
 const TRICK_STATE_LABELS = {
-  waiting: 'Waiting', pop: 'Pop detected',
-  airtime: 'Ollie attempt', landing: 'Landing', ollie: 'Ollie!',
+  waiting: 'Waiting', pop: 'Loading...',
+  airtime: 'In the air!', landing: 'Landing', ollie: 'Landed!',
 };
 const TRICK_STATE_COLORS = {
   waiting: '#333', pop: '#FF9800',
@@ -137,16 +137,28 @@ export default function DashboardScreen({ navigation }) {
     if (isActiveRef.current && impact > maxImpactRef.current) maxImpactRef.current = impact;
 
     // App-side trick state machine (more granular than ESP32 firmware)
-    // FSR-enhanced trick state machine
-    const tailPressure = Math.max(0, (data.f4 || 0) - 300); // noise floor
+    // Trick state — driven by ESP32 firmware output + FSR tail for pop hint
+    const tailRaw = data.f4 || 0;
+    const tailActive = tailRaw > 600; // FSR tail pressed (low threshold)
     const prev = trickStateRef.current;
     let next = prev;
-    // Pop: tail FSR spike OR high impact + low az
-    if      (tailPressure > 800 || (impact > 20 && (data.az||0) < 5)) next = 'pop';
-    else if (impact < 4 && impact > 0)                                 next = 'airtime';
-    else if (impact > 18 && prev === 'airtime')                        next = 'landing';
-    else if (impact < 12 && impact > 0 && prev === 'landing')          next = 'ollie';
-    else if (impact < 12 && impact > 0 && (prev === 'ollie' || prev === 'pop')) next = 'waiting';
+
+    if (trick !== 'none') {
+      // ESP32 detected active airtime/landing phase
+      next = trick === 'ollie' ? 'airtime'
+           : trick === 'kickflip' ? 'airtime'
+           : trick === 'heelflip' ? 'airtime'
+           : 'airtime';
+    } else if (prev === 'airtime') {
+      // Just completed trick — show result briefly
+      next = 'ollie';
+      setTimeout(() => { trickStateRef.current = 'waiting'; setTrickState('waiting'); }, 1500);
+    } else if (tailActive) {
+      next = 'pop';    // tail FSR pressed = loading pop
+    } else if (prev === 'pop' && !tailActive) {
+      next = 'waiting'; // released tail without airtime = just standing
+    }
+
     if (next !== prev) { trickStateRef.current = next; setTrickState(next); }
 
     // Throttled UI update — updates sensorData in bleStore → triggers re-render
