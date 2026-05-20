@@ -49,6 +49,7 @@ export default function DashboardScreen({ navigation }) {
   const subscriptionRef = useRef(null);
   const prevTrickRef    = useRef('none');
   const lastUiRef       = useRef(0);
+  const boardRef        = useRef(null); // direct 100Hz path to 3D viewer
   const isActiveRef     = useRef(isActive);
   const trickStateRef   = useRef('waiting');
   const maxImpactRef    = useRef(0);
@@ -124,6 +125,15 @@ export default function DashboardScreen({ navigation }) {
 
   // handleIncomingData uses only refs + stable Zustand setters → no stale closure
   function handleIncomingData(data) {
+    // ── Direct 100Hz update to 3D board viewer (bypasses React state throttle) ──
+    const { ax: dax, ay: day, az: daz } = data;
+    const directRaw = calcPitchRoll(dax||0, day||0, daz||9.8);
+    boardRef.current?.update(
+      directRaw.pitch - calibRef.current.pitch,
+      directRaw.roll  - calibRef.current.roll,
+      data.f1||0, data.f2||0, data.f3||0, data.f4||0
+    );
+
     // Existing trick detection (from ESP32 firmware)
     const trick = data.trick;
     if (isActiveRef.current && trick !== 'none' && prevTrickRef.current === 'none') {
@@ -229,6 +239,7 @@ export default function DashboardScreen({ navigation }) {
 
       {/* Live 3D board — pitch/roll + FSR zones */}
       <LiveBoardViewer
+        ref={boardRef}
         pitch={livePitch}
         roll={liveRoll}
         f1={sensorData.f1 || 0}

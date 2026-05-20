@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 import React from 'react';
@@ -298,10 +298,25 @@ animate();
 </body>
 </html>`;
 
-export default function LiveBoardViewer({ pitch=0, roll=0, f1=0, f2=0, f3=0, f4=0, simulated=false, style }) {
+// forwardRef lets DashboardScreen call .update() directly at 100Hz
+// bypassing React state (which only updates at 10Hz)
+const LiveBoardViewer = forwardRef(function LiveBoardViewer(
+  { pitch=0, roll=0, f1=0, f2=0, f3=0, f4=0, simulated=false, style },
+  ref
+) {
   const webviewRef = useRef(null);
   const [ready, setReady] = React.useState(false);
 
+  // Expose direct update method — called from BLE callback at 100Hz
+  useImperativeHandle(ref, () => ({
+    update(p, r, n, h, o, t) {
+      webviewRef.current?.postMessage(
+        JSON.stringify({ type:'sensor', pitch:p, roll:r, f1:n, f2:h, f3:o, f4:t })
+      );
+    },
+  }), []);
+
+  // Fallback: also update on prop changes (sim mode etc.)
   useEffect(() => {
     if (!ready) return;
     webviewRef.current?.postMessage(JSON.stringify({ type:'sensor', pitch, roll, f1, f2, f3, f4 }));
@@ -327,7 +342,9 @@ export default function LiveBoardViewer({ pitch=0, roll=0, f1=0, f2=0, f3=0, f4=
       </View>
     </View>
   );
-}
+});
+
+export default LiveBoardViewer;
 
 const s = StyleSheet.create({
   container: { overflow:'hidden', backgroundColor:'#080c18', borderRadius:12 },
