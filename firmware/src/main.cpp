@@ -105,6 +105,7 @@ void detectTrick(float ax_ms, float ay_ms, float az_ms, float gx_dps, int fsrTai
 void setup() {
     Serial.begin(115200);
     Wire.begin(SDA_PIN, SCL_PIN);
+    Wire.setClock(100000); // slow I2C for better reliability on perfboard
 
     // FSR pins are input-only ADC — set 11dB attenuation for 0–3.3V range
     analogSetAttenuation(ADC_11db);
