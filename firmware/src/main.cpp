@@ -180,9 +180,11 @@ void loop() {
         pCharacteristic->notify();
     }
 
-    // Only print when FSR is pressed (> 100)
-    if (f1 > 100 || f4 > 100) {
-        Serial.print("FSR DETECTED — nose:"); Serial.print(f1);
+    // Print all 4 FSRs when any is pressed
+    if (f1 > 100 || f2 > 100 || f3 > 100 || f4 > 100) {
+        Serial.print("nose:"); Serial.print(f1);
+        Serial.print(" heel:"); Serial.print(f2);
+        Serial.print(" toe:"); Serial.print(f3);
         Serial.print(" tail:"); Serial.println(f4);
     }
 
