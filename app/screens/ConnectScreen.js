@@ -100,11 +100,9 @@ export default function ConnectScreen({ navigation }) {
       return;
     }
     setPermError(false); setScanning(true);
-    manager.startDeviceScan(null, null, (error, device) => {
+    manager.startDeviceScan(null, { allowDuplicates: false }, (error, device) => {
       if (error) { setScanning(false); return; }
-      if (device && device.name === 'SK8Sense') {
-        addDevice(device); // keep original BLE device object with connect() method
-      }
+      if (device) addDevice(device);
     });
   };
 
