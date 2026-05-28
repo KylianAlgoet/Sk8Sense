@@ -100,10 +100,22 @@ export default function ConnectScreen({ navigation }) {
       return;
     }
     setPermError(false); setScanning(true);
-    manager.startDeviceScan(null, { allowDuplicates: false }, (error, device) => {
-      if (error) { setScanning(false); return; }
-      if (device) addDevice(device);
-    });
+    const SK8_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+    manager.startDeviceScan(
+      [SK8_UUID],
+      { allowDuplicates: false, scanMode: 3 }, // scanMode 3 = LOW_LATENCY active scan
+      (error, device) => {
+        if (error) {
+          // Fallback: scan all devices if UUID filter fails
+          manager.startDeviceScan(null, { allowDuplicates: false, scanMode: 3 }, (err2, dev) => {
+            if (err2) { setScanning(false); return; }
+            if (dev && (dev.name === 'SK8Sense' || dev.name?.includes('SK8'))) addDevice(dev);
+          });
+          return;
+        }
+        if (device) addDevice(device);
+      }
+    );
   };
 
   const connect = async (device) => {

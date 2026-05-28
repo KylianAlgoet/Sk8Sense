@@ -122,7 +122,6 @@ void setup() {
     pService->start();
     NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
     pAdvertising->addServiceUUID(SERVICE_UUID);
-    pAdvertising->setName("SK8Sense"); // include name in advertisement packet
     pAdvertising->start();
     Serial.println("SK8Sense BLE advertising started");
 }
