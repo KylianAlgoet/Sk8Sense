@@ -100,11 +100,12 @@ export default function ConnectScreen({ navigation }) {
       return;
     }
     setPermError(false); setScanning(true);
-    // Filter by SK8Sense service UUID — only shows our board
-    const SERVICE = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
-    manager.startDeviceScan([SERVICE], null, (error, device) => {
+    manager.startDeviceScan(null, null, (error, device) => {
       if (error) { setScanning(false); return; }
-      if (device) addDevice({ ...device, name: device.name || 'SK8Sense' });
+      // Only add devices named SK8Sense or with our service UUID
+      if (device && (device.name === 'SK8Sense' || (device.serviceUUIDs || []).includes('4fafc201-1fb5-459e-8fcc-c5c9c331914b'))) {
+        addDevice({ ...device, name: 'SK8Sense' });
+      }
     });
   };
 
