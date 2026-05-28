@@ -1,4 +1,6 @@
-import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { useState, useEffect } from 'react';
+import { getSessionAnalysis } from '../services/aiCoach';
 
 const TRICK_COLORS = {
   ollie:    '#4CAF50',
@@ -27,6 +29,18 @@ export default function SessionSummaryScreen({ navigation, route }) {
     : '0.0';
   const maxImpact = session.maxImpact ? (session.maxImpact / 9.81).toFixed(1) : null;
 
+  const [aiAnalysis, setAiAnalysis] = useState('');
+  const [aiLoading, setAiLoading] = useState(true);
+
+  useEffect(() => {
+    getSessionAnalysis({
+      tricks: session.tricks,
+      duration: session.duration,
+      maxImpact: session.maxImpact,
+    }).then(text => { setAiAnalysis(text || ''); setAiLoading(false); })
+      .catch(() => setAiLoading(false));
+  }, []);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Session Complete</Text>
@@ -53,6 +67,19 @@ export default function SessionSummaryScreen({ navigation, route }) {
             <Text style={[styles.statValue, { color: '#FF9800' }]}>{maxImpact}g</Text>
             <Text style={styles.statLabel}>Max impact</Text>
           </View>
+        )}
+      </View>
+
+      {/* AI Coach analysis */}
+      <View style={styles.aiBox}>
+        <Text style={styles.aiLabel}>🤖 AI COACH</Text>
+        {aiLoading ? (
+          <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginTop:4 }}>
+            <ActivityIndicator size="small" color="#4488ff" />
+            <Text style={styles.aiLoading}>Analysing your session...</Text>
+          </View>
+        ) : (
+          <Text style={styles.aiText}>{aiAnalysis || 'No data to analyse yet.'}</Text>
         )}
       </View>
 
@@ -126,6 +153,10 @@ const styles = StyleSheet.create({
   logTrick: { color: '#fff', fontSize: 13, fontWeight: '600', flex: 1 },
   logTime: { color: '#555', fontSize: 12 },
 
+  aiBox: { backgroundColor:'#0a1628', borderRadius:10, padding:14, marginBottom:20, borderWidth:1, borderColor:'#1e3a5f' },
+  aiLabel: { color:'#4488ff', fontSize:10, fontWeight:'bold', letterSpacing:2, marginBottom:8 },
+  aiText: { color:'#ccd9ff', fontSize:13, lineHeight:20 },
+  aiLoading: { color:'#444', fontSize:12 },
   btn: {
     backgroundColor: '#e94560', borderRadius: 8,
     paddingVertical: 14, alignItems: 'center', marginTop: 16,

@@ -5,6 +5,7 @@ import useBleStore, { SERVICE_UUID, CHAR_UUID } from '../store/bleStore';
 import useSessionStore from '../store/sessionStore';
 import { startMockSensor } from '../store/mockBle';
 import LiveBoardViewer from '../components/LiveBoardViewer';
+import { getTrickTip } from '../services/aiCoach';
 
 const IS_WEB = Platform.OS === 'web';
 const UI_HZ = 10;
@@ -54,6 +55,8 @@ export default function DashboardScreen({ navigation }) {
   const prevTrickRef    = useRef('none');
   const lastUiRef       = useRef(0);
   const boardRef        = useRef(null); // direct 100Hz path to 3D viewer
+  const trickMetaRef    = useRef({});   // live sensor context during airtime
+  const [aiTip, setAiTip] = useState('');
   const isActiveRef     = useRef(isActive);
   const trickStateRef   = useRef('waiting');
   const maxImpactRef    = useRef(0);
@@ -138,11 +141,33 @@ export default function DashboardScreen({ navigation }) {
       data.f1||0, data.f2||0, data.f3||0, data.f4||0
     );
 
+    // Track peak sensor values for AI coaching
+    const m = trickMetaRef.current;
+    if (Math.abs(data.gx||0) > Math.abs(m.peakGx||0)) m.peakGx = data.gx;
+    if (Math.abs(data.gy||0) > Math.abs(m.peakGy||0)) m.peakGy = data.gy;
+    m.tailFsr = Math.max(m.tailFsr||0, data.f4||0);
+    if (!m.airtimeStart && data.trick !== 'none') m.airtimeStart = Date.now();
+    if (m.airtimeStart && data.trick === 'none') {
+      m.airtime = Date.now() - m.airtimeStart;
+      m.airtimeStart = null;
+    }
+
     // Existing trick detection (from ESP32 firmware)
     const trick = data.trick;
     if (isActiveRef.current && trick !== 'none' && prevTrickRef.current === 'none') {
       addTrick(trick);
       triggerTrickAnimation(trick);
+      // Get AI tip for this trick (async, non-blocking)
+      const meta = { ...trickMetaRef.current };
+      trickMetaRef.current = {}; // reset for next trick
+      getTrickTip({
+        trick,
+        peakGx: meta.peakGx || 0,
+        peakGy: meta.peakGy || 0,
+        airtime: meta.airtime || 0,
+        tailFsr: meta.tailFsr || 0,
+        landingImpact: maxImpactRef.current,
+      }).then(tip => { if (tip) setAiTip(tip); }).catch(() => {});
     }
     prevTrickRef.current = trick;
 
@@ -312,6 +337,14 @@ export default function DashboardScreen({ navigation }) {
         </Animated.View>
       )}
 
+      {/* AI Coach tip */}
+      {aiTip !== '' && (
+        <View style={styles.aiTipBox}>
+          <Text style={styles.aiTipLabel}>🤖 AI COACH</Text>
+          <Text style={styles.aiTipText}>{aiTip}</Text>
+        </View>
+      )}
+
       {/* Live trick feed */}
       <Text style={styles.feedTitle}>LIVE TRICK FEED</Text>
       <FlatList
@@ -365,6 +398,9 @@ const styles = StyleSheet.create({
   fsrLabel: { fontSize:8, fontWeight:'bold', letterSpacing:1, textAlign:'center' },
   fsrBarBg: { height:5, backgroundColor:'#16213e', borderRadius:3, overflow:'hidden' },
   fsrBarFill: { height:'100%', borderRadius:3 },
+  aiTipBox: { backgroundColor:'#0a1628', borderRadius:8, paddingVertical:8, paddingHorizontal:12, marginBottom:8, borderWidth:1, borderColor:'#1e3a5f', flexDirection:'row', alignItems:'center', gap:8 },
+  aiTipLabel: { color:'#4488ff', fontSize:9, fontWeight:'bold', letterSpacing:1 },
+  aiTipText: { color:'#ccd9ff', fontSize:12, flex:1, lineHeight:18 },
   feedTitle: { color:'#aaa', fontSize:10, fontWeight:'bold', letterSpacing:2, marginBottom:5 },
   feed: { flex:1 },
   feedEmpty: { color:'#444', textAlign:'center', marginTop:16, fontSize:12 },
