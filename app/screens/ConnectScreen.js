@@ -102,9 +102,8 @@ export default function ConnectScreen({ navigation }) {
     setPermError(false); setScanning(true);
     manager.startDeviceScan(null, null, (error, device) => {
       if (error) { setScanning(false); return; }
-      // Only add devices named SK8Sense or with our service UUID
-      if (device && (device.name === 'SK8Sense' || (device.serviceUUIDs || []).includes('4fafc201-1fb5-459e-8fcc-c5c9c331914b'))) {
-        addDevice({ ...device, name: 'SK8Sense' });
+      if (device && device.name === 'SK8Sense') {
+        addDevice(device); // keep original BLE device object with connect() method
       }
     });
   };
