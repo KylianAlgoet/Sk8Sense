@@ -7,122 +7,114 @@
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
-// ── IMU pins ──────────────────────────────────────────────────────────────────
 #define SDA_PIN 21
 #define SCL_PIN 22
 
-// ── FSR pins (input-only ADC pins) ────────────────────────────────────────────
-// Wire each FSR: one terminal to 3.3V, other terminal to GPIO + 10kΩ to GND
-#define FSR_NOSE  34   // FSR 1 — nose
-#define FSR_HEEL  35   // FSR 2 — heel-side
-#define FSR_TOE   32   // FSR 3 — toe-side
-#define FSR_TAIL  33   // FSR 4 — tail (pop sensor)
+// FSR pins
+#define FSR_NOSE  34
+#define FSR_HEEL  35
+#define FSR_TOE   32
+#define FSR_TAIL  33
 
-// ── Trick detection thresholds ────────────────────────────────────────────────
-#define AIRTIME_MAG_MAX   7.0f    // total accel < 7 m/s² = in air
-#define LAND_MAG_MIN      14.0f   // total accel > 14 m/s² = landing impact
-#define AIRTIME_MIN_MS    80      // min airtime for valid trick
-
-// FSR thresholds (0–4095 ADC, 12-bit)
-#define FSR_POP_THRESHOLD   1800  // tail FSR must exceed this to count as pop
-#define FSR_FLICK_THRESHOLD 1200  // heel/toe FSR for flip detection
-#define GYRO_FLIP_THRESHOLD 200.0f // deg/s for kickflip/heelflip
-
-// ── Globals ───────────────────────────────────────────────────────────────────
 static NimBLECharacteristic* pCharacteristic = nullptr;
 MPU6050 mpu;
 
 float ax = 0.0f, ay = 0.0f, az = 9.8f;
 float gx = 0.0f, gy = 0.0f, gz = 0.0f;
-int   f1 = 0, f2 = 0, f3 = 0, f4 = 0;  // FSR values (nose, heel, toe, tail)
 String trick = "none";
 
-// ── Trick state machine ───────────────────────────────────────────────────────
-enum TrickPhase { IDLE, POP, AIRTIME, LANDING };
+// Thresholds
+#define AIRTIME_MAG_MAX   6.5f   // total accel < 6.5 m/s² = airtime
+#define LAND_MAG_MIN      15.0f  // impact > 15 m/s² = landing
+#define AIRTIME_MIN_MS    80     // min airtime for valid trick
+
+// Gyro thresholds (degrees/s) — tracked as peak during airtime
+#define KICK_THRESHOLD    180.0f // kickflip: gx > 180°/s
+#define HEEL_THRESHOLD    180.0f // heelflip: gx < -180°/s
+#define SHUV_THRESHOLD    160.0f // shove-it: |gy| > 160°/s
+
+enum TrickPhase { IDLE, AIRTIME, LANDING };
 static TrickPhase trickPhase = IDLE;
 static unsigned long phaseStartMs = 0;
 static String detectedTrick = "none";
-static bool popConfirmed = false;
+static float peakGx = 0.0f, peakGy = 0.0f;
 
-void detectTrick(float ax_ms, float ay_ms, float az_ms, float gx_dps, int fsrTail, int fsrHeel, int fsrToe) {
+void detectTrick(float ax_ms, float ay_ms, float az_ms, float gx_dps, float gy_dps) {
     unsigned long now = millis();
     float mag = sqrt(ax_ms*ax_ms + ay_ms*ay_ms + az_ms*az_ms);
 
     switch (trickPhase) {
-
         case IDLE:
-            trick = "none";
-            // Pop detected: tail FSR spike OR existing airtime detection
-            if (fsrTail > FSR_POP_THRESHOLD || mag < AIRTIME_MAG_MAX) {
-                // Classify trick based on flick:
-                // Kickflip: heel-side flick (FSR heel or gyro X positive)
-                // Heelflip: toe-side flick (FSR toe or gyro X negative)
-                if (fsrHeel > FSR_FLICK_THRESHOLD || gx_dps > GYRO_FLIP_THRESHOLD)
-                    detectedTrick = "kickflip";
-                else if (fsrToe > FSR_FLICK_THRESHOLD || gx_dps < -GYRO_FLIP_THRESHOLD)
-                    detectedTrick = "heelflip";
-                else
-                    detectedTrick = "ollie";
-
+            if (mag < AIRTIME_MAG_MAX) {
+                // Entering airtime — reset peak tracking
+                peakGx = 0.0f; peakGy = 0.0f;
+                detectedTrick = "ollie"; // default until gyro says otherwise
                 trickPhase = AIRTIME;
                 phaseStartMs = now;
-                popConfirmed = (fsrTail > FSR_POP_THRESHOLD);
             }
+            trick = "none";
             break;
 
         case AIRTIME:
+            // Track peak gyro values during airtime
+            if (abs(gx_dps) > abs(peakGx)) peakGx = gx_dps;
+            if (abs(gy_dps) > abs(peakGy)) peakGy = gy_dps;
+
+            // Classify trick by dominant rotation
+            if (abs(peakGy) > SHUV_THRESHOLD && abs(peakGy) > abs(peakGx)) {
+                // Shove-it: rotation around Y axis (board spins horizontally)
+                detectedTrick = (peakGy > 0) ? "bs_shuv" : "fs_shuv";
+            } else if (abs(peakGx) > KICK_THRESHOLD) {
+                // Flip trick: rotation around X axis (board flips)
+                detectedTrick = (peakGx > 0) ? "kickflip" : "heelflip";
+            } else {
+                detectedTrick = "ollie";
+            }
+
             trick = detectedTrick;
-            // Landing: impact spike after minimum airtime
+
+            // Check for landing
             if (mag > LAND_MAG_MIN && now - phaseStartMs > AIRTIME_MIN_MS) {
                 trickPhase = LANDING;
                 phaseStartMs = now;
-            }
-            // Abort if airtime is way too long (false positive)
-            if (now - phaseStartMs > 2000) {
-                trickPhase = IDLE;
-                trick = "none";
-                detectedTrick = "none";
             }
             break;
 
         case LANDING:
             trick = detectedTrick;
-            if (now - phaseStartMs > 300) {
+            if (now - phaseStartMs > 400) {
                 trickPhase = IDLE;
                 trick = "none";
                 detectedTrick = "none";
-                popConfirmed = false;
+                peakGx = 0.0f; peakGy = 0.0f;
             }
-            break;
-
-        default:
-            trickPhase = IDLE;
             break;
     }
 }
 
-// ── Setup ─────────────────────────────────────────────────────────────────────
 void setup() {
     Serial.begin(115200);
     Wire.begin(SDA_PIN, SCL_PIN);
-    Wire.setClock(100000); // slow I2C for better reliability on perfboard
-
-    // FSR pins are input-only ADC — set 11dB attenuation for 0–3.3V range
-    analogSetAttenuation(ADC_11db);
+    Wire.setClock(100000);
 
     mpu.initialize();
     if (!mpu.testConnection()) {
-        Serial.println("MPU6050 connection FAILED");
+        Serial.println("MPU6050 FAILED");
     } else {
         Serial.println("MPU6050 OK");
     }
-
     mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_8);
     mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_500);
 
+    // FSR pins are input-only ADC — no pinMode needed
+    Serial.print("FSR pins: nose="); Serial.print(FSR_NOSE);
+    Serial.print(" heel="); Serial.print(FSR_HEEL);
+    Serial.print(" toe="); Serial.print(FSR_TOE);
+    Serial.print(" tail="); Serial.println(FSR_TAIL);
+
     NimBLEDevice::init("SK8Sense");
-    NimBLEServer*   pServer   = NimBLEDevice::createServer();
-    NimBLEService*  pService  = pServer->createService(SERVICE_UUID);
+    NimBLEServer* pServer = NimBLEDevice::createServer();
+    NimBLEService* pService = pServer->createService(SERVICE_UUID);
     pCharacteristic = pService->createCharacteristic(
         CHARACTERISTIC_UUID,
         NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY
@@ -131,12 +123,9 @@ void setup() {
     NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
     pAdvertising->addServiceUUID(SERVICE_UUID);
     pAdvertising->start();
-
     Serial.println("SK8Sense BLE advertising started");
-    Serial.println("FSR pins: nose=34 heel=35 toe=32 tail=33");
 }
 
-// ── Loop ──────────────────────────────────────────────────────────────────────
 void loop() {
     // Read IMU
     int16_t rawAx, rawAy, rawAz, rawGx, rawGy, rawGz;
@@ -149,30 +138,29 @@ void loop() {
     gy = rawGy / 65.5f;
     gz = rawGz / 65.5f;
 
-    // Read FSR sensors (0–4095)
-    f1 = analogRead(FSR_NOSE);
-    f2 = analogRead(FSR_HEEL);
-    f3 = analogRead(FSR_TOE);
-    f4 = analogRead(FSR_TAIL);
+    // Read FSRs (12-bit ADC, scale to 0-1023 for compact JSON)
+    int f1 = analogRead(FSR_NOSE) >> 2;   // nose
+    int f2 = analogRead(FSR_HEEL) >> 2;   // heel
+    int f3 = analogRead(FSR_TOE)  >> 2;   // toe
+    int f4 = analogRead(FSR_TAIL) >> 2;   // tail
 
-    // Trick detection using both IMU + FSR
-    detectTrick(ax, ay, az, gx, f4, f2, f3);
+    detectTrick(ax, ay, az, gx, gy);
 
-    // Build JSON payload (increased buffer for FSR fields)
-    StaticJsonDocument<300> doc;
-    doc["ax"] = serialized(String(ax, 2));
-    doc["ay"] = serialized(String(ay, 2));
-    doc["az"] = serialized(String(az, 2));
-    doc["gx"] = serialized(String(gx, 1));
-    doc["gy"] = serialized(String(gy, 1));
-    doc["gz"] = serialized(String(gz, 1));
+    // BLE JSON — compact to fit in 185 byte MTU
+    StaticJsonDocument<220> doc;
+    doc["ax"] = round(ax * 10) / 10.0;
+    doc["ay"] = round(ay * 10) / 10.0;
+    doc["az"] = round(az * 10) / 10.0;
+    doc["gx"] = round(gx * 10) / 10.0;
+    doc["gy"] = round(gy * 10) / 10.0;
+    doc["gz"] = round(gz * 10) / 10.0;
     doc["trick"] = trick;
-    doc["f1"] = f1;   // nose FSR
-    doc["f2"] = f2;   // heel FSR
-    doc["f3"] = f3;   // toe FSR
-    doc["f4"] = f4;   // tail FSR
+    doc["f1"] = f1;
+    doc["f2"] = f2;
+    doc["f3"] = f3;
+    doc["f4"] = f4;
 
-    char buf[300];
+    char buf[220];
     serializeJson(doc, buf, sizeof(buf));
 
     pCharacteristic->setValue((uint8_t*)buf, strlen(buf));
@@ -180,20 +168,5 @@ void loop() {
         pCharacteristic->notify();
     }
 
-    // Raw ADC debug — print every 200ms
-    static unsigned long lastPrint = 0;
-    if (millis() - lastPrint >= 200) {
-        lastPrint = millis();
-        // Raw 12-bit ADC values (0-4095)
-        int r1 = analogRead(34);
-        int r2 = analogRead(35);
-        int r3 = analogRead(32);
-        int r4 = analogRead(33);
-        Serial.print("RAW nose:"); Serial.print(r1);
-        Serial.print(" heel:"); Serial.print(r2);
-        Serial.print(" toe:"); Serial.print(r3);
-        Serial.print(" tail:"); Serial.println(r4);
-    }
-
-    delay(10);  // 100Hz
+    delay(10); // 100Hz
 }

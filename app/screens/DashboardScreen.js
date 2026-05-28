@@ -13,11 +13,15 @@ const TRICK_COLORS = {
   ollie:    '#4CAF50',
   kickflip: '#2196F3',
   heelflip: '#FF9800',
+  bs_shuv:  '#e94560',
+  fs_shuv:  '#9C27B0',
 };
 const COACHING_TIPS = {
   ollie:    'Stay over the board on landing',
   kickflip: 'Flick harder off the pocket',
   heelflip: 'Kick out more with your heel',
+  bs_shuv:  'Scoop the tail back harder',
+  fs_shuv:  'Scoop forward and stay centered',
 };
 const TRICK_STATE_LABELS = {
   waiting: 'Waiting', pop: 'Loading...',
