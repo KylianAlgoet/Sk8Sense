@@ -180,12 +180,19 @@ void loop() {
         pCharacteristic->notify();
     }
 
-    // Print all 4 FSRs when any is pressed
-    if (f1 > 100 || f2 > 100 || f3 > 100 || f4 > 100) {
-        Serial.print("nose:"); Serial.print(f1);
-        Serial.print(" heel:"); Serial.print(f2);
-        Serial.print(" toe:"); Serial.print(f3);
-        Serial.print(" tail:"); Serial.println(f4);
+    // Raw ADC debug — print every 200ms
+    static unsigned long lastPrint = 0;
+    if (millis() - lastPrint >= 200) {
+        lastPrint = millis();
+        // Raw 12-bit ADC values (0-4095)
+        int r1 = analogRead(34);
+        int r2 = analogRead(35);
+        int r3 = analogRead(32);
+        int r4 = analogRead(33);
+        Serial.print("RAW nose:"); Serial.print(r1);
+        Serial.print(" heel:"); Serial.print(r2);
+        Serial.print(" toe:"); Serial.print(r3);
+        Serial.print(" tail:"); Serial.println(r4);
     }
 
     delay(10);  // 100Hz
