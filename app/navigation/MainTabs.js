@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BG, TEXT, LINE, ACCENT, FONT } from '../design-tokens';
 
 import HomeScreen from '../screens/HomeScreen';
 import ConnectScreen from '../screens/ConnectScreen';
@@ -97,7 +98,7 @@ function CustomTabBar({ state, descriptors, navigation }) {
             <Ionicons
               name={iconName}
               size={24}
-              color={isFocused ? '#e94560' : '#444'}
+              color={isFocused ? ACCENT : TEXT.t3}
             />
             <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>
               {options.tabBarLabel || route.name}
@@ -125,9 +126,9 @@ export default function MainTabs() {
 const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#0d0d1a',
+    backgroundColor: BG.b1,
     borderTopWidth: 1,
-    borderTopColor: '#1a1a2e',
+    borderTopColor: LINE.dim,
     paddingTop: 10,
     paddingHorizontal: 16,
   },
@@ -138,13 +139,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   tabLabel: {
-    color: '#444',
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.5,
+    color: TEXT.t3,
+    fontSize: 8,
+    fontFamily: FONT.mono,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   tabLabelActive: {
-    color: '#e94560',
+    color: ACCENT,
   },
   middleBtn: {
     flex: 1,
@@ -157,22 +159,23 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: '#e94560',
+    backgroundColor: ACCENT,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 8,
-    shadowColor: '#e94560',
+    shadowColor: ACCENT,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 8,
   },
   middleCircleActive: {
-    backgroundColor: '#c73550',
+    opacity: 0.85,
   },
   middleLabel: {
-    color: '#e94560',
-    fontSize: 9,
-    fontWeight: 'bold',
+    color: ACCENT,
+    fontSize: 8,
+    fontFamily: FONT.mono,
     letterSpacing: 1,
+    textTransform: 'uppercase',
   },
 });

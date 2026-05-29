@@ -3,8 +3,9 @@ import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'reac
 import { Ionicons } from '@expo/vector-icons';
 import useSessionStore from '../store/sessionStore';
 import useAuthStore from '../store/authStore';
+import T, { BG, TEXT, LINE, ACCENT, PANEL, BTN, FONT, SPACE, R } from '../design-tokens';
 
-function StatCard({ value, label, color = '#fff' }) {
+function StatCard({ value, label, color = TEXT.t1 }) {
   return (
     <View style={s.statCard}>
       <Text style={[s.statVal, { color }]}>{value}</Text>
@@ -55,7 +56,7 @@ export default function HomeScreen({ navigation }) {
       {/* Stats row */}
       <View style={s.statsRow}>
         <StatCard value={sessions.length} label="Sessions" />
-        <StatCard value={totalTricks} label="Tricks" color="#e94560" />
+        <StatCard value={totalTricks} label="Tricks" color={ACCENT} />
         <StatCard value={totalMinutes > 0 ? `${totalMinutes}m` : '0m'} label="Time" />
       </View>
 
@@ -74,7 +75,7 @@ export default function HomeScreen({ navigation }) {
           </View>
           <View style={s.lastSessionRight}>
             <Text style={s.lastSessionTricks}>{lastSession.tricks.length} tricks</Text>
-            <Ionicons name="chevron-forward" size={16} color="#555" />
+            <Ionicons name="chevron-forward" size={16} color={TEXT.t3} />
           </View>
         </TouchableOpacity>
       )}
@@ -88,7 +89,7 @@ export default function HomeScreen({ navigation }) {
           onPress={() => navigation.navigate('Connect')}
           activeOpacity={0.85}
         >
-          <Ionicons name="radio-outline" size={28} color="#fff" />
+          <Ionicons name="radio-outline" size={28} color={T.ACCENT_INK} />
           <Text style={s.scanBtnText}>SCAN FOR BOARD</Text>
         </TouchableOpacity>
       </View>
@@ -96,55 +97,51 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-const CARD_BG = '#16213e';
-
 const s = StyleSheet.create({
   container: {
-    flex: 1, backgroundColor: '#1a1a2e',
-    paddingHorizontal: 24, paddingTop: 56,
+    flex: 1, backgroundColor: BG.base,
+    paddingHorizontal: SPACE.xl, paddingTop: 56,
     gap: 20,
   },
 
   greeting: { gap: 2 },
-  greetSmall: { color: '#555', fontSize: 14 },
-  greetBig: { color: '#e94560', fontSize: 42, fontWeight: 'bold', letterSpacing: 3 },
-  greetSub: { color: '#444', fontSize: 13 },
+  greetSmall: { color: TEXT.t3, fontSize: 14, fontFamily: FONT.body },
+  greetBig: { color: ACCENT, fontSize: 42, fontFamily: FONT.display, letterSpacing: 3, textTransform: 'uppercase' },
+  greetSub: { color: TEXT.t3, fontSize: 13, fontFamily: FONT.body },
 
-  statsRow: { flexDirection: 'row', gap: 10 },
+  statsRow: { flexDirection: 'row', gap: SPACE.sm },
   statCard: {
-    flex: 1, backgroundColor: CARD_BG,
-    borderRadius: 12, padding: 14, alignItems: 'center',
-    borderWidth: 1, borderColor: '#1e2d4a',
+    flex: 1, ...PANEL.base,
+    padding: SPACE.md, alignItems: 'center',
   },
-  statVal: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
-  statLbl: { color: '#555', fontSize: 10, marginTop: 3, letterSpacing: 0.5 },
+  statVal: { color: TEXT.t1, fontSize: 24, fontFamily: FONT.display, letterSpacing: -0.5 },
+  statLbl: { color: TEXT.t2, fontSize: 10, marginTop: 3, letterSpacing: 0.5, fontFamily: FONT.mono, textTransform: 'uppercase' },
 
   lastSessionCard: {
-    backgroundColor: CARD_BG, borderRadius: 12,
-    padding: 14, flexDirection: 'row',
+    ...PANEL.base,
+    padding: SPACE.md, flexDirection: 'row',
     alignItems: 'center', justifyContent: 'space-between',
-    borderWidth: 1, borderColor: '#1e2d4a',
   },
   lastSessionLeft: { gap: 3 },
-  lastSessionLabel: { color: '#444', fontSize: 10, fontWeight: 'bold', letterSpacing: 1.5 },
-  lastSessionDate: { color: '#fff', fontSize: 15, fontWeight: '600', textTransform: 'capitalize' },
+  lastSessionLabel: { color: TEXT.t3, fontSize: 10, fontFamily: FONT.mono, letterSpacing: 1.5, textTransform: 'uppercase' },
+  lastSessionDate: { color: TEXT.t1, fontSize: 15, fontFamily: FONT.bodySb, textTransform: 'capitalize' },
   lastSessionRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  lastSessionTricks: { color: '#e94560', fontSize: 14, fontWeight: 'bold' },
+  lastSessionTricks: { color: ACCENT, fontSize: 14, fontFamily: FONT.bodySb },
 
   scanWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   ring1: {
     position: 'absolute', width: 130, height: 130, borderRadius: 65,
-    backgroundColor: 'rgba(233,69,96,0.08)', borderWidth: 1, borderColor: 'rgba(233,69,96,0.15)',
+    backgroundColor: `${ACCENT}14`, borderWidth: 1, borderColor: `${ACCENT}26`,
   },
   ring2: {
     position: 'absolute', width: 160, height: 160, borderRadius: 80,
-    backgroundColor: 'rgba(233,69,96,0.04)', borderWidth: 1, borderColor: 'rgba(233,69,96,0.08)',
+    backgroundColor: `${ACCENT}0A`, borderWidth: 1, borderColor: `${ACCENT}14`,
   },
   scanBtn: {
-    backgroundColor: '#e94560', width: 104, height: 104, borderRadius: 52,
+    backgroundColor: ACCENT, width: 104, height: 104, borderRadius: 52,
     alignItems: 'center', justifyContent: 'center', gap: 6,
-    shadowColor: '#e94560', shadowOffset: { width: 0, height: 6 },
+    shadowColor: ACCENT, shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.45, shadowRadius: 12, elevation: 12,
   },
-  scanBtnText: { color: '#fff', fontSize: 10, fontWeight: 'bold', letterSpacing: 1 },
+  scanBtnText: { color: T.ACCENT_INK, fontSize: 10, fontFamily: FONT.display, letterSpacing: 1, textTransform: 'uppercase' },
 });

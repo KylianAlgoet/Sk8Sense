@@ -6,6 +6,7 @@ import useSessionStore from '../store/sessionStore';
 import { startMockSensor } from '../store/mockBle';
 import LiveBoardViewer from '../components/LiveBoardViewer';
 import { getTrickTip } from '../services/aiCoach';
+import T, { BG, TEXT, LINE, ACCENT, PANEL, BTN, FONT, SPACE, R } from '../design-tokens';
 
 const IS_WEB = Platform.OS === 'web';
 const UI_HZ = 10;
@@ -14,7 +15,7 @@ const TRICK_COLORS = {
   ollie:    '#4CAF50',
   kickflip: '#2196F3',
   heelflip: '#FF9800',
-  bs_shuv:  '#e94560',
+  bs_shuv:  ACCENT,
   fs_shuv:  '#9C27B0',
 };
 const COACHING_TIPS = {
@@ -29,7 +30,7 @@ const TRICK_STATE_LABELS = {
   airtime: 'In the air!', landing: 'Landing', ollie: 'Landed!',
 };
 const TRICK_STATE_COLORS = {
-  waiting: '#333', pop: '#FF9800',
+  waiting: TEXT.t3, pop: '#FF9800',
   airtime: '#2196F3', landing: '#FF5722', ollie: '#4CAF50',
 };
 
@@ -308,12 +309,12 @@ export default function DashboardScreen({ navigation }) {
           { label: 'NOSE', value: fsrNose, color: '#4CAF50' },
           { label: 'HEEL', value: fsrHeel, color: '#2196F3' },
           { label: 'TOE',  value: fsrToe,  color: '#FF9800' },
-          { label: 'TAIL', value: fsrTail, color: '#e94560' },
+          { label: 'TAIL', value: fsrTail, color: ACCENT },
         ].map(({ label, value, color }) => {
           const pct = Math.min(value / 700, 1);
           return (
             <View key={label} style={styles.fsrCell}>
-              <Text style={[styles.fsrLabel, { color: pct > 0.1 ? color : '#333' }]}>{label}</Text>
+              <Text style={[styles.fsrLabel, { color: pct > 0.1 ? color : TEXT.t4 }]}>{label}</Text>
               <View style={styles.fsrBarBg}>
                 <View style={[styles.fsrBarFill, { width: `${Math.round(pct * 100)}%`, backgroundColor: color }]} />
               </View>
@@ -354,7 +355,7 @@ export default function DashboardScreen({ navigation }) {
         ListEmptyComponent={<Text style={styles.feedEmpty}>{isActive ? 'Waiting for tricks...' : 'Press START SESSION'}</Text>}
         renderItem={({ item }) => (
           <View style={styles.feedItem}>
-            <View style={[styles.feedDot, { backgroundColor: TRICK_COLORS[item.trick]||'#fff' }]} />
+            <View style={[styles.feedDot, { backgroundColor: TRICK_COLORS[item.trick]||TEXT.t1 }]} />
             <Text style={styles.feedTrick}>{item.trick.toUpperCase()}</Text>
             <Text style={styles.feedTip}>{COACHING_TIPS[item.trick]}</Text>
             <Text style={styles.feedTime}>{formatTime(item.time)}</Text>
@@ -366,47 +367,47 @@ export default function DashboardScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex:1, backgroundColor:'#1a1a2e', padding:16, paddingTop:48 },
+  container: { flex:1, backgroundColor:BG.base, padding:16, paddingTop:48 },
   header: { flexDirection:'row', alignItems:'center', marginBottom:12, gap:8 },
-  title: { color:'#e94560', fontSize:20, fontWeight:'bold', flex:1 },
-  demoTag: { color:'#FFD700', fontSize:10, fontWeight:'bold', letterSpacing:2 },
-  calibBtn: { backgroundColor:'#16213e', borderRadius:6, paddingHorizontal:10, paddingVertical:5, borderWidth:1, borderColor:'#2a4a7a' },
+  title: { color:ACCENT, fontSize:20, fontFamily:FONT.display, textTransform:'uppercase', letterSpacing:-0.5, flex:1 },
+  demoTag: { color:T.AMBER, fontSize:10, fontFamily:FONT.mono, letterSpacing:2, textTransform:'uppercase' },
+  calibBtn: { ...PANEL.base, paddingHorizontal:10, paddingVertical:5 },
   calibBtnDone: { borderColor:'#4CAF5055', backgroundColor:'#0a2a0a' },
-  calibText: { color:'#4488ff', fontSize:11, fontWeight:'600' },
-  disconnectText: { color:'#555', fontSize:16, paddingLeft:4 },
-  sessionBar: { flexDirection:'row', alignItems:'center', backgroundColor:'#16213e', borderRadius:10, padding:10, marginBottom:10, gap:10 },
-  sessionBarActive: { borderWidth:1, borderColor:'#e94560' },
-  sessionTimer: { color:'#fff', fontSize:18, fontWeight:'bold', flex:1 },
-  sessionTrickCount: { color:'#aaa', fontSize:12 },
-  sessionBtn: { backgroundColor:'#e94560', paddingVertical:7, paddingHorizontal:14, borderRadius:6 },
-  sessionBtnStop: { backgroundColor:'#555' },
-  sessionBtnText: { color:'#fff', fontSize:12, fontWeight:'bold' },
+  calibText: { color:T.CYAN, fontSize:11, fontFamily:FONT.mono },
+  disconnectText: { color:TEXT.t2, fontSize:16, paddingLeft:4, fontFamily:FONT.mono },
+  sessionBar: { flexDirection:'row', alignItems:'center', ...PANEL.base, borderRadius:R, padding:10, marginBottom:10, gap:10 },
+  sessionBarActive: { borderColor:ACCENT },
+  sessionTimer: { color:TEXT.t1, fontSize:18, fontFamily:FONT.display, letterSpacing:-0.5, flex:1 },
+  sessionTrickCount: { color:TEXT.t2, fontSize:12, fontFamily:FONT.mono },
+  sessionBtn: { ...BTN.base, ...BTN.primary, paddingVertical:7, paddingHorizontal:14 },
+  sessionBtnStop: { backgroundColor:BG.b4, borderWidth:1, borderColor:LINE.mid },
+  sessionBtnText: { ...BTN.primaryText, fontSize:12 },
   boardViewer: { height:220, marginBottom:8 },
   debugRow: { flexDirection:'row', gap:6, marginBottom:8 },
-  debugCell: { flex:1, backgroundColor:'#16213e', borderRadius:7, padding:7, alignItems:'center' },
-  debugLabel: { color:'#4488ff', fontSize:9, fontWeight:'bold', letterSpacing:1 },
-  debugValue: { color:'#fff', fontSize:13, fontWeight:'600' },
-  stateCell: { flex:2, borderRadius:7, padding:7, alignItems:'center', justifyContent:'center', borderWidth:1 },
-  stateText: { fontSize:11, fontWeight:'bold' },
-  trickBanner: { borderRadius:8, paddingVertical:10, paddingHorizontal:16, alignItems:'center', marginBottom:6 },
-  trickText: { color:'#fff', fontSize:22, fontWeight:'bold' },
-  tipBox: { backgroundColor:'#0f3460', borderRadius:8, paddingVertical:7, paddingHorizontal:12, marginBottom:8, flexDirection:'row', alignItems:'center', gap:8 },
-  tipLabel: { color:'#FFD700', fontSize:10, fontWeight:'bold' },
-  tipText: { color:'#fff', fontSize:12, flex:1 },
+  debugCell: { flex:1, ...PANEL.base, padding:7, alignItems:'center' },
+  debugLabel: { color:T.CYAN, fontSize:9, fontFamily:FONT.mono, letterSpacing:1, textTransform:'uppercase' },
+  debugValue: { color:TEXT.t1, fontSize:13, fontFamily:FONT.bodySb },
+  stateCell: { flex:2, borderRadius:R, padding:7, alignItems:'center', justifyContent:'center', borderWidth:1 },
+  stateText: { fontSize:11, fontFamily:FONT.bodySb },
+  trickBanner: { borderRadius:R, paddingVertical:10, paddingHorizontal:16, alignItems:'center', marginBottom:6 },
+  trickText: { color:T.ACCENT_INK, fontSize:22, fontFamily:FONT.display, letterSpacing:-0.5, textTransform:'uppercase' },
+  tipBox: { ...PANEL.base, paddingVertical:7, paddingHorizontal:12, marginBottom:8, flexDirection:'row', alignItems:'center', gap:8 },
+  tipLabel: { color:T.AMBER, fontSize:10, fontFamily:FONT.mono, letterSpacing:1, textTransform:'uppercase' },
+  tipText: { color:TEXT.t1, fontSize:12, fontFamily:FONT.body, flex:1 },
   fsrRow: { flexDirection:'row', gap:6, marginBottom:8 },
   fsrCell: { flex:1, gap:3 },
-  fsrLabel: { fontSize:8, fontWeight:'bold', letterSpacing:1, textAlign:'center' },
-  fsrBarBg: { height:5, backgroundColor:'#16213e', borderRadius:3, overflow:'hidden' },
+  fsrLabel: { fontSize:8, fontFamily:FONT.mono, letterSpacing:1, textTransform:'uppercase', textAlign:'center' },
+  fsrBarBg: { height:5, backgroundColor:BG.b4, borderRadius:3, overflow:'hidden' },
   fsrBarFill: { height:'100%', borderRadius:3 },
-  aiTipBox: { backgroundColor:'#0a1628', borderRadius:8, paddingVertical:8, paddingHorizontal:12, marginBottom:8, borderWidth:1, borderColor:'#1e3a5f', flexDirection:'row', alignItems:'center', gap:8 },
-  aiTipLabel: { color:'#4488ff', fontSize:9, fontWeight:'bold', letterSpacing:1 },
-  aiTipText: { color:'#ccd9ff', fontSize:12, flex:1, lineHeight:18 },
-  feedTitle: { color:'#aaa', fontSize:10, fontWeight:'bold', letterSpacing:2, marginBottom:5 },
+  aiTipBox: { ...PANEL.accent, paddingVertical:8, paddingHorizontal:12, marginBottom:8, flexDirection:'row', alignItems:'center', gap:8 },
+  aiTipLabel: { color:T.CYAN, fontSize:9, fontFamily:FONT.mono, letterSpacing:1, textTransform:'uppercase' },
+  aiTipText: { color:TEXT.t1, fontSize:12, fontFamily:FONT.body, flex:1, lineHeight:18 },
+  feedTitle: { color:TEXT.t2, fontSize:10, fontFamily:FONT.mono, letterSpacing:2, textTransform:'uppercase', marginBottom:5 },
   feed: { flex:1 },
-  feedEmpty: { color:'#444', textAlign:'center', marginTop:16, fontSize:12 },
-  feedItem: { flexDirection:'row', alignItems:'center', backgroundColor:'#16213e', borderRadius:6, padding:9, marginBottom:5, gap:8 },
+  feedEmpty: { color:TEXT.t3, fontFamily:FONT.body, textAlign:'center', marginTop:16, fontSize:12 },
+  feedItem: { flexDirection:'row', alignItems:'center', ...PANEL.base, borderRadius:R, padding:9, marginBottom:5, gap:8 },
   feedDot: { width:8, height:8, borderRadius:4 },
-  feedTrick: { color:'#fff', fontWeight:'bold', fontSize:12, width:65 },
-  feedTip: { color:'#555', fontSize:10, flex:1 },
-  feedTime: { color:'#444', fontSize:10 },
+  feedTrick: { color:TEXT.t1, fontFamily:FONT.bodySb, fontSize:12, width:65, textTransform:'uppercase' },
+  feedTip: { color:TEXT.t3, fontSize:10, fontFamily:FONT.body, flex:1 },
+  feedTime: { color:TEXT.t3, fontSize:10, fontFamily:FONT.mono },
 });

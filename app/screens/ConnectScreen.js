@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useBleStore from '../store/bleStore';
+import T, { BG, TEXT, LINE, ACCENT, PANEL, BTN, FONT, SPACE, R } from '../design-tokens';
 
 const IS_WEB = Platform.OS === 'web';
 const MOCK_DEVICE = { id: 'mock-esp32', name: 'SK8Sense ESP32 (Demo)' };
@@ -58,7 +59,7 @@ function ScanRings({ scanning }) {
         </>
       )}
       <View style={[sr.center, scanning && sr.centerActive]}>
-        <Ionicons name={scanning ? 'radio' : 'radio-outline'} size={32} color={scanning ? '#e94560' : '#555'} />
+        <Ionicons name={scanning ? 'radio' : 'radio-outline'} size={32} color={scanning ? ACCENT : TEXT.t3} />
       </View>
     </View>
   );
@@ -66,9 +67,9 @@ function ScanRings({ scanning }) {
 
 const sr = StyleSheet.create({
   wrap: { width: 110, height: 110, alignItems:'center', justifyContent:'center', marginBottom:8 },
-  ring: { position:'absolute', width:70, height:70, borderRadius:35, borderWidth:1.5, borderColor:'#e94560', backgroundColor:'rgba(233,69,96,0.06)' },
-  center: { width:68, height:68, borderRadius:34, backgroundColor:'#16213e', borderWidth:1.5, borderColor:'#2a3a5a', alignItems:'center', justifyContent:'center' },
-  centerActive: { borderColor:'#e9456055', backgroundColor:'#1e1428' },
+  ring: { position:'absolute', width:70, height:70, borderRadius:35, borderWidth:1.5, borderColor:ACCENT, backgroundColor:`${ACCENT}0F` },
+  center: { width:68, height:68, borderRadius:34, ...PANEL.base, alignItems:'center', justifyContent:'center' },
+  centerActive: { borderColor:`${ACCENT}55`, backgroundColor:BG.b3 },
 });
 
 export default function ConnectScreen({ navigation }) {
@@ -126,7 +127,7 @@ export default function ConnectScreen({ navigation }) {
     <View style={s.container}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Ionicons name="arrow-back" size={20} color="#aaa" />
+          <Ionicons name="arrow-back" size={20} color={TEXT.t2} />
         </TouchableOpacity>
         <Text style={s.title}>Find Board</Text>
         {IS_WEB && <View style={s.demoBadge}><Text style={s.demoText}>DEMO</Text></View>}
@@ -150,7 +151,7 @@ export default function ConnectScreen({ navigation }) {
         ListEmptyComponent={
           !scanning ? (
             <View style={s.emptyWrap}>
-              <Ionicons name="bluetooth-outline" size={36} color="#2a3a5a" />
+              <Ionicons name="bluetooth-outline" size={36} color={LINE.dim} />
               <Text style={s.emptyText}>No boards found</Text>
               <Text style={s.emptySub}>Make sure your board is powered on</Text>
             </View>
@@ -159,7 +160,7 @@ export default function ConnectScreen({ navigation }) {
         renderItem={({ item }) => (
           <TouchableOpacity style={s.deviceCard} onPress={() => connect(item)} activeOpacity={0.8} disabled={!!connecting}>
             <View style={s.deviceIcon}>
-              <Ionicons name="radio" size={20} color="#e94560" />
+              <Ionicons name="radio" size={20} color={ACCENT} />
             </View>
             <View style={s.deviceInfo}>
               <Text style={s.deviceName}>{item.name || 'Unknown Device'}</Text>
@@ -179,7 +180,7 @@ export default function ConnectScreen({ navigation }) {
         disabled={scanning}
         activeOpacity={0.85}
       >
-        <Ionicons name={scanning ? 'pause-circle-outline' : 'radio-outline'} size={18} color="#fff" />
+        <Ionicons name={scanning ? 'pause-circle-outline' : 'radio-outline'} size={18} color={T.ACCENT_INK} />
         <Text style={s.scanBtnText}>{scanning ? 'SCANNING...' : 'SCAN FOR BOARD'}</Text>
       </TouchableOpacity>
     </View>
@@ -187,29 +188,29 @@ export default function ConnectScreen({ navigation }) {
 }
 
 const s = StyleSheet.create({
-  container: { flex:1, backgroundColor:'#1a1a2e', paddingTop:52 },
-  header: { flexDirection:'row', alignItems:'center', paddingHorizontal:20, marginBottom:4, gap:12 },
-  backBtn: { width:36, height:36, borderRadius:18, backgroundColor:'#16213e', alignItems:'center', justifyContent:'center' },
-  title: { color:'#fff', fontSize:22, fontWeight:'bold', flex:1 },
-  demoBadge: { backgroundColor:'#FFD70018', borderRadius:6, paddingHorizontal:8, paddingVertical:3 },
-  demoText: { color:'#FFD700', fontSize:10, fontWeight:'bold', letterSpacing:1 },
+  container: { flex:1, backgroundColor:BG.base, paddingTop:52 },
+  header: { flexDirection:'row', alignItems:'center', paddingHorizontal:SPACE.xl, marginBottom:4, gap:SPACE.md },
+  backBtn: { ...BTN.icon },
+  title: { color:TEXT.t1, fontSize:22, fontFamily:FONT.display, textTransform:'uppercase', letterSpacing:-0.5, flex:1 },
+  demoBadge: { backgroundColor:`${T.AMBER}18`, borderRadius:R, paddingHorizontal:8, paddingVertical:3 },
+  demoText: { color:T.AMBER, fontSize:10, fontFamily:FONT.mono, letterSpacing:1, textTransform:'uppercase' },
   scanSection: { alignItems:'center', paddingVertical:20, gap:6 },
-  scanStatus: { color:'#aaa', fontSize:14 },
-  permError: { color:'#e94560', fontSize:12, textAlign:'center', paddingHorizontal:24 },
+  scanStatus: { color:TEXT.t2, fontSize:14, fontFamily:FONT.body },
+  permError: { color:ACCENT, fontSize:12, fontFamily:FONT.body, textAlign:'center', paddingHorizontal:24 },
   list: { flex:1 },
-  listContent: { paddingHorizontal:20, paddingTop:4 },
+  listContent: { paddingHorizontal:SPACE.xl, paddingTop:4 },
   emptyWrap: { alignItems:'center', paddingTop:28, gap:8 },
-  emptyText: { color:'#555', fontSize:15, fontWeight:'600' },
-  emptySub: { color:'#333', fontSize:12, textAlign:'center' },
-  deviceCard: { backgroundColor:'#16213e', borderRadius:12, padding:14, marginBottom:10, flexDirection:'row', alignItems:'center', gap:12, borderWidth:1, borderColor:'#1e2d4a' },
-  deviceIcon: { width:40, height:40, borderRadius:20, backgroundColor:'#e9456018', alignItems:'center', justifyContent:'center' },
+  emptyText: { color:TEXT.t2, fontSize:15, fontFamily:FONT.bodySb },
+  emptySub: { color:TEXT.t3, fontSize:12, fontFamily:FONT.body, textAlign:'center' },
+  deviceCard: { ...PANEL.raised, padding:SPACE.md, marginBottom:10, flexDirection:'row', alignItems:'center', gap:12 },
+  deviceIcon: { width:40, height:40, borderRadius:20, backgroundColor:`${ACCENT}18`, alignItems:'center', justifyContent:'center' },
   deviceInfo: { flex:1 },
-  deviceName: { color:'#fff', fontSize:14, fontWeight:'600' },
-  deviceId: { color:'#444', fontSize:11, marginTop:2 },
-  connectBtn: { backgroundColor:'#e94560', borderRadius:8, paddingHorizontal:14, paddingVertical:7 },
-  connectBtnText: { color:'#fff', fontSize:12, fontWeight:'bold' },
+  deviceName: { color:TEXT.t1, fontSize:14, fontFamily:FONT.bodySb },
+  deviceId: { color:TEXT.t3, fontSize:11, marginTop:2, fontFamily:FONT.mono },
+  connectBtn: { ...BTN.base, ...BTN.primary, paddingVertical:7, paddingHorizontal:14 },
+  connectBtnText: { ...BTN.primaryText, fontSize:12 },
   connectingDot: { width:10, height:10, borderRadius:5, backgroundColor:'#4CAF50' },
-  scanBtn: { margin:20, backgroundColor:'#e94560', borderRadius:12, paddingVertical:15, flexDirection:'row', alignItems:'center', justifyContent:'center', gap:8, shadowColor:'#e94560', shadowOffset:{width:0,height:4}, shadowOpacity:0.3, elevation:6 },
-  scanBtnActive: { backgroundColor:'#444' },
-  scanBtnText: { color:'#fff', fontSize:14, fontWeight:'bold', letterSpacing:1 },
+  scanBtn: { margin:SPACE.xl, ...BTN.base, ...BTN.primary, shadowColor:ACCENT, shadowOffset:{width:0,height:4}, shadowOpacity:0.3, elevation:6 },
+  scanBtnActive: { backgroundColor:BG.b4 },
+  scanBtnText: { ...BTN.primaryText, fontSize:14 },
 });

@@ -4,6 +4,7 @@ import {
   StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import useAuthStore from '../store/authStore';
+import T, { BG, TEXT, LINE, ACCENT, PANEL, BTN, FONT, SPACE, R } from '../design-tokens';
 
 export default function LoginScreen({ navigation }) {
   const { login, setError, clearError, error } = useAuthStore();
@@ -46,7 +47,7 @@ export default function LoginScreen({ navigation }) {
         <TextInput
           style={styles.input}
           placeholder="Email"
-          placeholderTextColor="#555"
+          placeholderTextColor={TEXT.t3}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -56,7 +57,7 @@ export default function LoginScreen({ navigation }) {
         <TextInput
           style={styles.input}
           placeholder="Password"
-          placeholderTextColor="#555"
+          placeholderTextColor={TEXT.t3}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -66,7 +67,7 @@ export default function LoginScreen({ navigation }) {
 
         <TouchableOpacity style={styles.btn} onPress={handleLogin} disabled={loading}>
           {loading
-            ? <ActivityIndicator color="#fff" />
+            ? <ActivityIndicator color={T.ACCENT_INK} />
             : <Text style={styles.btnText}>SIGN IN</Text>
           }
         </TouchableOpacity>
@@ -82,24 +83,25 @@ export default function LoginScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1a2e' },
+  container: { flex: 1, backgroundColor: BG.base },
   inner: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
-    padding: 32, gap: 14,
+    padding: 32, gap: SPACE.md,
   },
-  logo: { color: '#e94560', fontSize: 42, fontWeight: 'bold', letterSpacing: 4, marginBottom: 4 },
-  subtitle: { color: '#aaa', fontSize: 14, marginBottom: 8 },
-  error: { color: '#e94560', fontSize: 13, textAlign: 'center' },
+  logo: { color: ACCENT, fontSize: 42, fontFamily: FONT.display, letterSpacing: 4, textTransform: 'uppercase', marginBottom: 4 },
+  subtitle: { color: TEXT.t2, fontSize: 14, fontFamily: FONT.body, marginBottom: 8 },
+  error: { color: ACCENT, fontSize: 13, fontFamily: FONT.body, textAlign: 'center' },
   input: {
-    width: '100%', backgroundColor: '#16213e',
-    borderRadius: 10, padding: 14, color: '#fff', fontSize: 15,
-    borderWidth: 1, borderColor: '#333',
+    width: '100%', ...PANEL.base,
+    padding: SPACE.md, color: TEXT.t1, fontSize: 15,
+    fontFamily: FONT.body,
   },
   btn: {
-    backgroundColor: '#e94560', width: '100%',
-    paddingVertical: 16, borderRadius: 10, alignItems: 'center', marginTop: 8,
+    ...BTN.base, ...BTN.primary, width: '100%', marginTop: 8,
+    shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, elevation: 6,
   },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: 'bold', letterSpacing: 1 },
-  link: { color: '#555', fontSize: 14, marginTop: 4 },
-  linkAccent: { color: '#e94560' },
+  btnText: { ...BTN.primaryText, fontSize: 16 },
+  link: { color: TEXT.t3, fontSize: 14, fontFamily: FONT.body, marginTop: 4 },
+  linkAccent: { color: ACCENT, fontFamily: FONT.body },
 });
