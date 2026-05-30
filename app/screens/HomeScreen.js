@@ -1,38 +1,22 @@
 import { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useSessionStore from '../store/sessionStore';
 import useAuthStore from '../store/authStore';
-import T, { BG, TEXT, LINE, ACCENT, PANEL, BTN, FONT, SPACE, R } from '../design-tokens';
-
-function StatCard({ value, label, color = TEXT.t1 }) {
-  return (
-    <View style={s.statCard}>
-      <Text style={[s.statVal, { color }]}>{value}</Text>
-      <Text style={s.statLbl}>{label}</Text>
-    </View>
-  );
-}
+import { BG, TEXT, LINE, ACCENT, PANEL, BTN, FONT, SPACE, R } from '../design-tokens';
+import { V3Grid, V3RegStrip, V3SectionHead, V3StatGrid, V3MotionAI, V3MotionTip, V3Ticked, V3Chip } from '../components/V3Shared';
 
 export default function HomeScreen({ navigation }) {
   const { sessions } = useSessionStore();
   const { user } = useAuthStore();
 
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const pulse2Anim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.18, duration: 1200, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-        Animated.timing(pulseAnim, { toValue: 1.0, duration: 1200, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-      ])
-    ).start();
-    Animated.loop(
-      Animated.sequence([
-        Animated.delay(400),
-        Animated.timing(pulse2Anim, { toValue: 1.32, duration: 1200, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-        Animated.timing(pulse2Anim, { toValue: 1.0, duration: 1200, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 1000, useNativeDriver: true }),
       ])
     ).start();
   }, []);
@@ -40,108 +24,141 @@ export default function HomeScreen({ navigation }) {
   const totalTricks  = sessions.reduce((acc, s) => acc + s.tricks.length, 0);
   const totalSeconds = sessions.reduce((acc, s) => acc + s.duration, 0);
   const totalMinutes = Math.floor(totalSeconds / 60);
+  const lastSession  = sessions[0];
 
-  const firstName = user?.displayName?.split(' ')[0] || 'Skater';
-  const lastSession = sessions[0];
+  const readiness = sessions.length > 0 ? Math.min(82 + sessions.length, 99) : 0;
 
   return (
     <View style={s.container}>
-      {/* Greeting */}
-      <View style={s.greeting}>
-        <Text style={s.greetSmall}>Hey, {firstName} 👋</Text>
-        <Text style={s.greetBig}>SK8SENSE</Text>
-        <Text style={s.greetSub}>AI Skateboard Coach</Text>
-      </View>
+      <V3Grid />
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
-      {/* Stats row */}
-      <View style={s.statsRow}>
-        <StatCard value={sessions.length} label="Sessions" />
-        <StatCard value={totalTricks} label="Tricks" color={ACCENT} />
-        <StatCard value={totalMinutes > 0 ? `${totalMinutes}m` : '0m'} label="Time" />
-      </View>
+        {/* RegStrip */}
+        <V3RegStrip scanId="SCN_0048" node="SK8.MIS" live={sessions.length > 0} />
 
-      {/* Last session preview */}
-      {lastSession && (
-        <TouchableOpacity
-          style={s.lastSessionCard}
-          onPress={() => navigation.getParent()?.navigate('Profile', { screen: 'History' })}
-          activeOpacity={0.8}
-        >
-          <View style={s.lastSessionLeft}>
-            <Text style={s.lastSessionLabel}>LAST SESSION</Text>
-            <Text style={s.lastSessionDate}>
-              {new Date(lastSession.startTime).toLocaleDateString('nl-BE', { weekday: 'short', day: 'numeric', month: 'short' })}
-            </Text>
+        {/* Wordmark */}
+        <View style={s.wordmarkRow}>
+          <View>
+            <Text style={s.wordmark}>SKATESENSE</Text>
+            <Text style={s.wordmarkSub}>.MOVEMENT INTELLIGENCE</Text>
           </View>
-          <View style={s.lastSessionRight}>
-            <Text style={s.lastSessionTricks}>{lastSession.tricks.length} tricks</Text>
-            <Ionicons name="chevron-forward" size={16} color={TEXT.t3} />
-          </View>
-        </TouchableOpacity>
-      )}
+          <TouchableOpacity style={s.iconBtn}>
+            <Ionicons name="notifications-outline" size={15} color={TEXT.t2} />
+          </TouchableOpacity>
+        </View>
 
-      {/* Scan button with pulse rings */}
-      <View style={s.scanWrap}>
-        <Animated.View style={[s.ring2, { transform: [{ scale: pulse2Anim }] }]} />
-        <Animated.View style={[s.ring1, { transform: [{ scale: pulseAnim }] }]} />
-        <TouchableOpacity
-          style={s.scanBtn}
-          onPress={() => navigation.navigate('Connect')}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="radio-outline" size={28} color={T.ACCENT_INK} />
-          <Text style={s.scanBtnText}>SCAN FOR BOARD</Text>
+        {/* Readiness hero */}
+        <V3Ticked style={s.hero}>
+          <View style={s.heroTop}>
+            <View style={s.heroTopLeft}>
+              <Text style={s.heroLabel}>· READINESS INDEX ·</Text>
+              <V3Chip label="PEAK" variant="live" />
+            </View>
+          </View>
+          <View style={s.heroMain}>
+            <Text style={s.heroNum}>{readiness}</Text>
+            <Text style={s.heroPct}>%</Text>
+            <View style={s.heroRight}>
+              <Text style={s.heroRightText}>MOTION{'\n'}STABILITY</Text>
+            </View>
+          </View>
+          <View style={s.heroDivider} />
+          <View style={s.heroBottom}>
+            <Text style={s.heroMetaLeft}>T−06:00</Text>
+            <Text style={s.heroMetaCenter}>BALANCE VECTOR · 100HZ</Text>
+            <Text style={s.heroMetaRight}>NOW</Text>
+          </View>
+        </V3Ticked>
+
+        {/* Motion AI */}
+        <V3MotionAI
+          text={sessions.length > 0
+            ? `${sessions.length}-session streak logged. Pop telemetry is strong — today's target is landing consistency.`
+            : "Connect your board to start tracking. The first rep is always the hardest."}
+          cta="INITIATE SESSION"
+          onCta={() => navigation.navigate('Connect')}
+        />
+
+        {/* Stats */}
+        <V3StatGrid stats={[
+          { value: totalTricks, label: 'DETECTIONS' },
+          { value: sessions.length, label: 'SESSIONS' },
+          { value: `${totalMinutes}M`, label: 'ON-BOARD' },
+        ]} />
+
+        {/* Analyze button */}
+        <TouchableOpacity style={s.ghostBtn}>
+          <Ionicons name="camera-outline" size={14} color={TEXT.t1} />
+          <Text style={s.ghostBtnText}>ANALYZE MOVEMENT</Text>
         </TouchableOpacity>
-      </View>
+
+        {/* Latest session */}
+        {lastSession && (
+          <>
+            <V3SectionHead num="/04" label="LATEST SESSION" right="VIEW ALL ›" />
+            <TouchableOpacity
+              style={s.sessionRow}
+              onPress={() => navigation.getParent()?.navigate('Profile', { screen: 'History' })}
+              activeOpacity={0.8}
+            >
+              <View style={s.sessionIndex}>
+                <Text style={s.sessionIndexLabel}>SES</Text>
+                <Text style={s.sessionIndexNum}>{String(sessions.length).padStart(3, '0')}</Text>
+              </View>
+              <View style={s.sessionBody}>
+                <Text style={s.sessionDate}>
+                  {new Date(lastSession.startTime).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()}
+                </Text>
+                <Text style={s.sessionMeta}>{lastSession.tricks.length} DETECTIONS · {Math.floor(lastSession.duration / 60)}MIN</Text>
+              </View>
+              <View style={s.sessionScore}>
+                <Text style={s.sessionScoreNum}>{lastSession.tricks.length > 0 ? 82 : '--'}</Text>
+                <Text style={s.sessionScoreDelta}>{lastSession.tricks.length > 0 ? '▲ +6' : ''}</Text>
+              </View>
+            </TouchableOpacity>
+          </>
+        )}
+
+      </ScrollView>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  container: {
-    flex: 1, backgroundColor: BG.base,
-    paddingHorizontal: SPACE.xl, paddingTop: 56,
-    gap: 20,
-  },
+  container: { flex: 1, backgroundColor: BG.base },
+  content: { paddingTop: 60, paddingHorizontal: 18, paddingBottom: 96, gap: 14 },
 
-  greeting: { gap: 2 },
-  greetSmall: { color: TEXT.t3, fontSize: 14, fontFamily: FONT.body },
-  greetBig: { color: ACCENT, fontSize: 42, fontFamily: FONT.display, letterSpacing: 3, textTransform: 'uppercase' },
-  greetSub: { color: TEXT.t3, fontSize: 13, fontFamily: FONT.body },
+  wordmarkRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  wordmark: { fontFamily: FONT.display, fontSize: 22, color: TEXT.t1, textTransform: 'uppercase', letterSpacing: -0.3 },
+  wordmarkSub: { fontFamily: FONT.mono, fontSize: 9, color: TEXT.t3, letterSpacing: 3.5, textTransform: 'uppercase', marginTop: 3 },
+  iconBtn: { width: 34, height: 34, backgroundColor: BG.b2, borderWidth: 1, borderColor: LINE.dim, borderRadius: R, alignItems: 'center', justifyContent: 'center' },
 
-  statsRow: { flexDirection: 'row', gap: SPACE.sm },
-  statCard: {
-    flex: 1, ...PANEL.base,
-    padding: SPACE.md, alignItems: 'center',
-  },
-  statVal: { color: TEXT.t1, fontSize: 24, fontFamily: FONT.display, letterSpacing: -0.5 },
-  statLbl: { color: TEXT.t2, fontSize: 10, marginTop: 3, letterSpacing: 0.5, fontFamily: FONT.mono, textTransform: 'uppercase' },
+  hero: { padding: 16, gap: 12 },
+  heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heroTopLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  heroLabel: { fontFamily: FONT.mono, fontSize: 9, color: ACCENT, letterSpacing: 2, textTransform: 'uppercase' },
+  heroMain: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
+  heroNum: { fontFamily: FONT.display, fontSize: 80, color: ACCENT, letterSpacing: -3, lineHeight: 80 },
+  heroPct: { fontFamily: FONT.mono, fontSize: 13, color: TEXT.t3, marginBottom: 10 },
+  heroRight: { flex: 1, alignItems: 'flex-end', marginBottom: 6 },
+  heroRightText: { fontFamily: FONT.display, fontSize: 18, color: TEXT.t1, textTransform: 'uppercase', textAlign: 'right', lineHeight: 20 },
+  heroDivider: { height: 1, backgroundColor: LINE.dim },
+  heroBottom: { flexDirection: 'row', justifyContent: 'space-between' },
+  heroMetaLeft: { fontFamily: FONT.mono, fontSize: 8, color: TEXT.t4 },
+  heroMetaCenter: { fontFamily: FONT.mono, fontSize: 8, color: TEXT.t4 },
+  heroMetaRight: { fontFamily: FONT.mono, fontSize: 8, color: TEXT.t4 },
 
-  lastSessionCard: {
-    ...PANEL.base,
-    padding: SPACE.md, flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'space-between',
-  },
-  lastSessionLeft: { gap: 3 },
-  lastSessionLabel: { color: TEXT.t3, fontSize: 10, fontFamily: FONT.mono, letterSpacing: 1.5, textTransform: 'uppercase' },
-  lastSessionDate: { color: TEXT.t1, fontSize: 15, fontFamily: FONT.bodySb, textTransform: 'capitalize' },
-  lastSessionRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  lastSessionTricks: { color: ACCENT, fontSize: 14, fontFamily: FONT.bodySb },
+  ghostBtn: { ...BTN.base, ...BTN.ghost, justifyContent: 'center', gap: 8 },
+  ghostBtnText: { fontFamily: FONT.display, fontSize: 12, letterSpacing: 0.48, textTransform: 'uppercase', color: TEXT.t1 },
 
-  scanWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  ring1: {
-    position: 'absolute', width: 130, height: 130, borderRadius: 65,
-    backgroundColor: `${ACCENT}14`, borderWidth: 1, borderColor: `${ACCENT}26`,
-  },
-  ring2: {
-    position: 'absolute', width: 160, height: 160, borderRadius: 80,
-    backgroundColor: `${ACCENT}0A`, borderWidth: 1, borderColor: `${ACCENT}14`,
-  },
-  scanBtn: {
-    backgroundColor: ACCENT, width: 104, height: 104, borderRadius: 52,
-    alignItems: 'center', justifyContent: 'center', gap: 6,
-    shadowColor: ACCENT, shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45, shadowRadius: 12, elevation: 12,
-  },
-  scanBtnText: { color: T.ACCENT_INK, fontSize: 10, fontFamily: FONT.display, letterSpacing: 1, textTransform: 'uppercase' },
+  sessionRow: { flexDirection: 'row', ...PANEL.raised, overflow: 'hidden' },
+  sessionIndex: { width: 42, backgroundColor: BG.b1, borderRightWidth: 1, borderRightColor: LINE.dim, padding: 13, justifyContent: 'flex-end', gap: 2 },
+  sessionIndexLabel: { fontFamily: FONT.mono, fontSize: 8, color: TEXT.t3, textTransform: 'uppercase' },
+  sessionIndexNum: { fontFamily: FONT.display, fontSize: 11, color: ACCENT },
+  sessionBody: { flex: 1, padding: 13, gap: 4, justifyContent: 'center' },
+  sessionDate: { fontFamily: FONT.display, fontSize: 13, color: TEXT.t1, letterSpacing: -0.2 },
+  sessionMeta: { fontFamily: FONT.mono, fontSize: 9, color: TEXT.t3, letterSpacing: 1 },
+  sessionScore: { padding: 13, alignItems: 'flex-end', justifyContent: 'center', gap: 2 },
+  sessionScoreNum: { fontFamily: FONT.display, fontSize: 28, color: ACCENT, letterSpacing: -1 },
+  sessionScoreDelta: { fontFamily: FONT.mono, fontSize: 9, color: ACCENT },
 });

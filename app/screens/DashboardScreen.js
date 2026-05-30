@@ -7,6 +7,7 @@ import { startMockSensor } from '../store/mockBle';
 import LiveBoardViewer from '../components/LiveBoardViewer';
 import { getTrickTip } from '../services/aiCoach';
 import T, { BG, TEXT, LINE, ACCENT, PANEL, BTN, FONT, SPACE, R } from '../design-tokens';
+import { V3Grid, V3RegStrip, V3SectionHead, V3MotionTip, V3Chip } from '../components/V3Shared';
 
 const IS_WEB = Platform.OS === 'web';
 const UI_HZ = 10;
@@ -240,34 +241,55 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <V3Grid />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Dashboard</Text>
-        {IS_WEB && <Text style={styles.demoTag}>DEMO</Text>}
-        <TouchableOpacity
-          style={[styles.calibBtn, calibApplied && styles.calibBtnDone]}
-          onPress={handleCalibrate}
-        >
+      {/* Top bar */}
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={handleCalibrate} style={styles.calibBtn}>
           <Text style={[styles.calibText, calibApplied && { color: '#4CAF50' }]}>
-            {calibApplied ? '✓ Calibrated' : '◎ Calibrate'}
+            {calibApplied ? '✓ CALIBRATED' : '◎ CALIBRATE'}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleDisconnect}>
-          <Text style={styles.disconnectText}>✕</Text>
+        {IS_WEB && <V3Chip label="DEMO" variant="live" />}
+        {isActive && <V3Chip label="REC · ACTIVE" variant="live" />}
+        <TouchableOpacity onPress={handleDisconnect} style={styles.exitBtn}>
+          <Text style={styles.exitText}>← EXIT</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Session bar */}
-      <View style={[styles.sessionBar, isActive && styles.sessionBarActive]}>
-        <Text style={styles.sessionTimer}>{formatDuration(elapsed)}</Text>
-        <Text style={styles.sessionTrickCount}>{tricks.length} tricks</Text>
-        <TouchableOpacity style={[styles.sessionBtn, isActive && styles.sessionBtnStop]} onPress={handleStartStop}>
-          <Text style={styles.sessionBtnText}>{isActive ? 'STOP' : 'START SESSION'}</Text>
-        </TouchableOpacity>
+      {/* Session time hero */}
+      <View style={styles.timeHero}>
+        <Text style={styles.timeLabel}>· SESSION TIME ·</Text>
+        <Text style={styles.timerBig}>{formatDuration(elapsed)}</Text>
+        <View style={styles.detectRow}>
+          <Text style={styles.detectCount}>{tricks.length}</Text>
+          <Text style={styles.detectLabel}>DETECTIONS</Text>
+          <View style={styles.detectDivider} />
+          <Text style={styles.detectHz}>100HZ</Text>
+        </View>
       </View>
 
-      {/* Live 3D board — pitch/roll + FSR zones */}
+      {/* Detection banner */}
+      {trickActive ? (
+        <Animated.View style={[styles.detectionBanner, { transform:[{scale:bannerScale}], opacity:bannerOpacity }]}>
+          <View>
+            <Text style={styles.detectionCode}>› DETECTION · CODE</Text>
+            <Text style={styles.detectionTrick}>{sensorData.trick.toUpperCase()}</Text>
+          </View>
+          <Text style={styles.detectionScore}>82</Text>
+        </Animated.View>
+      ) : (
+        <View style={styles.listeningBanner}>
+          <Text style={styles.listeningText}>// LISTENING FOR MOVEMENT</Text>
+          <View style={[styles.stateChip, { borderColor: TRICK_STATE_COLORS[trickState]+'55' }]}>
+            <Text style={[styles.stateChipText, { color: TRICK_STATE_COLORS[trickState] }]}>
+              {TRICK_STATE_LABELS[trickState]}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Board viewer */}
       <LiveBoardViewer
         ref={boardRef}
         pitch={livePitch}
@@ -280,30 +302,22 @@ export default function DashboardScreen({ navigation }) {
         style={styles.boardViewer}
       />
 
-      {/* IMU + FSR debug row */}
-      <View style={styles.debugRow}>
-        <View style={styles.debugCell}>
-          <Text style={styles.debugLabel}>PITCH</Text>
-          <Text style={styles.debugValue}>{livePitch.toFixed(1)}°</Text>
-        </View>
-        <View style={styles.debugCell}>
-          <Text style={styles.debugLabel}>ROLL</Text>
-          <Text style={styles.debugValue}>{liveRoll.toFixed(1)}°</Text>
-        </View>
-        <View style={styles.debugCell}>
-          <Text style={styles.debugLabel}>TAIL</Text>
-          <Text style={[styles.debugValue, (sensorData.f4||0) > 1800 && { color: '#FF9800' }]}>
-            {Math.round((sensorData.f4||0) / 40.95)}%
-          </Text>
-        </View>
-        <View style={[styles.stateCell, { backgroundColor: TRICK_STATE_COLORS[trickState]+'22', borderColor: TRICK_STATE_COLORS[trickState]+'55' }]}>
-          <Text style={[styles.stateText, { color: TRICK_STATE_COLORS[trickState] }]}>
-            {TRICK_STATE_LABELS[trickState]}
-          </Text>
-        </View>
+      {/* IMU strip */}
+      <View style={styles.imuStrip}>
+        {[
+          { label: 'PITCH', value: `${livePitch.toFixed(1)}°`, hot: Math.abs(livePitch) > 20 },
+          { label: 'ROLL',  value: `${liveRoll.toFixed(1)}°`,  hot: Math.abs(liveRoll) > 20 },
+          { label: 'TAIL',  value: `${Math.round((sensorData.f4||0)/40.95)}%`, hot: (sensorData.f4||0) > 1800 },
+          { label: 'IMPACT',value: `${liveImpact.toFixed(1)}`, hot: liveImpact > 15 },
+        ].map(({ label, value, hot }, i) => (
+          <View key={label} style={[styles.imuCell, i === 3 && styles.imuCellLast]}>
+            <Text style={[styles.imuLabel, hot && { color: ACCENT }]}>{label}</Text>
+            <Text style={[styles.imuValue, hot && { color: ACCENT }]}>{value}</Text>
+          </View>
+        ))}
       </View>
 
-      {/* FSR pressure bars */}
+      {/* FSR bars */}
       <View style={styles.fsrRow}>
         {[
           { label: 'NOSE', value: fsrNose, color: '#4CAF50' },
@@ -323,67 +337,95 @@ export default function DashboardScreen({ navigation }) {
         })}
       </View>
 
-      {/* Trick banner */}
-      {trickActive && (
-        <Animated.View style={[styles.trickBanner, { backgroundColor: TRICK_COLORS[sensorData.trick]||'#FFD700' }, { transform:[{scale:bannerScale}], opacity:bannerOpacity }]}>
-          <Text style={styles.trickText}>🛹 {sensorData.trick.toUpperCase()}</Text>
-        </Animated.View>
+      {/* AI tip */}
+      {(aiTip || currentTip) && (
+        <V3MotionTip text={aiTip || currentTip} />
       )}
 
-      {/* Coaching tip */}
-      {currentTip !== '' && (
-        <Animated.View style={[styles.tipBox, { opacity:bannerOpacity }]}>
-          <Text style={styles.tipLabel}>💡 COACH</Text>
-          <Text style={styles.tipText}>{currentTip}</Text>
-        </Animated.View>
-      )}
-
-      {/* AI Coach tip */}
-      {aiTip !== '' && (
-        <View style={styles.aiTipBox}>
-          <Text style={styles.aiTipLabel}>🤖 AI COACH</Text>
-          <Text style={styles.aiTipText}>{aiTip}</Text>
-        </View>
-      )}
-
-      {/* Live trick feed */}
-      <Text style={styles.feedTitle}>LIVE TRICK FEED</Text>
+      {/* Feed */}
+      <V3SectionHead num="/·" label="DETECTION FEED" right={`${tricks.length} LOGGED`} />
       <FlatList
         data={[...tricks].reverse()}
         keyExtractor={(_,i) => i.toString()}
         style={styles.feed}
-        ListEmptyComponent={<Text style={styles.feedEmpty}>{isActive ? 'Waiting for tricks...' : 'Press START SESSION'}</Text>}
-        renderItem={({ item }) => (
+        ListEmptyComponent={
+          <Text style={styles.feedEmpty}>{isActive ? '// waiting for movement...' : 'Press START SESSION'}</Text>
+        }
+        renderItem={({ item, index }) => (
           <View style={styles.feedItem}>
-            <View style={[styles.feedDot, { backgroundColor: TRICK_COLORS[item.trick]||TEXT.t1 }]} />
+            <Text style={styles.feedIndex}>#{String(tricks.length - index).padStart(2,'0')}</Text>
+            <View style={[styles.feedDot, { backgroundColor: TRICK_COLORS[item.trick]||ACCENT }]} />
             <Text style={styles.feedTrick}>{item.trick.toUpperCase()}</Text>
-            <Text style={styles.feedTip}>{COACHING_TIPS[item.trick]}</Text>
-            <Text style={styles.feedTime}>{formatTime(item.time)}</Text>
+            <Text style={styles.feedScore}>82</Text>
           </View>
         )}
       />
+
+      {/* Start/Stop */}
+      <TouchableOpacity
+        style={[styles.sessionBtn, isActive && styles.sessionBtnStop]}
+        onPress={handleStartStop}
+      >
+        <Text style={styles.sessionBtnText}>{isActive ? '■ END SESSION' : '▶ START SESSION'}</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex:1, backgroundColor:BG.base, padding:16, paddingTop:48 },
-  header: { flexDirection:'row', alignItems:'center', marginBottom:12, gap:8 },
-  title: { color:ACCENT, fontSize:20, fontFamily:FONT.display, textTransform:'uppercase', letterSpacing:-0.5, flex:1 },
-  demoTag: { color:T.AMBER, fontSize:10, fontFamily:FONT.mono, letterSpacing:2, textTransform:'uppercase' },
-  calibBtn: { ...PANEL.base, paddingHorizontal:10, paddingVertical:5 },
-  calibBtnDone: { borderColor:'#4CAF5055', backgroundColor:'#0a2a0a' },
-  calibText: { color:T.CYAN, fontSize:11, fontFamily:FONT.mono },
-  disconnectText: { color:TEXT.t2, fontSize:16, paddingLeft:4, fontFamily:FONT.mono },
-  sessionBar: { flexDirection:'row', alignItems:'center', ...PANEL.base, borderRadius:R, padding:10, marginBottom:10, gap:10 },
-  sessionBarActive: { borderColor:ACCENT },
-  sessionTimer: { color:TEXT.t1, fontSize:18, fontFamily:FONT.display, letterSpacing:-0.5, flex:1 },
-  sessionTrickCount: { color:TEXT.t2, fontSize:12, fontFamily:FONT.mono },
-  sessionBtn: { ...BTN.base, ...BTN.primary, paddingVertical:7, paddingHorizontal:14 },
-  sessionBtnStop: { backgroundColor:BG.b4, borderWidth:1, borderColor:LINE.mid },
-  sessionBtnText: { ...BTN.primaryText, fontSize:12 },
-  boardViewer: { height:220, marginBottom:8 },
-  debugRow: { flexDirection:'row', gap:6, marginBottom:8 },
+  container: { flex:1, backgroundColor:BG.base, paddingTop:52, paddingHorizontal:16, paddingBottom:8 },
+
+  topBar: { flexDirection:'row', alignItems:'center', marginBottom:10, gap:8 },
+  calibBtn: { ...PANEL.base, paddingHorizontal:9, paddingVertical:4 },
+  calibText: { color:ACCENT, fontSize:9, fontFamily:FONT.mono, letterSpacing:1 },
+  exitBtn: { marginLeft:'auto' },
+  exitText: { color:TEXT.t2, fontSize:10, fontFamily:FONT.mono, letterSpacing:0.5 },
+
+  timeHero: { marginBottom:10, gap:3 },
+  timeLabel: { fontFamily:FONT.mono, fontSize:9, color:TEXT.t3, letterSpacing:2, textTransform:'uppercase' },
+  timerBig: { fontFamily:FONT.display, fontSize:64, color:TEXT.t1, letterSpacing:-2, lineHeight:64 },
+  detectRow: { flexDirection:'row', alignItems:'center', gap:10 },
+  detectCount: { fontFamily:FONT.display, fontSize:20, color:ACCENT, letterSpacing:-0.5 },
+  detectLabel: { fontFamily:FONT.mono, fontSize:9, color:TEXT.t3, letterSpacing:1, textTransform:'uppercase' },
+  detectDivider: { width:1, height:12, backgroundColor:LINE.dim },
+  detectHz: { fontFamily:FONT.mono, fontSize:9, color:TEXT.t3 },
+
+  detectionBanner: { backgroundColor:ACCENT, borderRadius:R, paddingVertical:12, paddingHorizontal:16, flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:8 },
+  detectionCode: { fontFamily:FONT.mono, fontSize:9, color:'rgba(10,10,11,0.6)', letterSpacing:1, textTransform:'uppercase' },
+  detectionTrick: { fontFamily:FONT.display, fontSize:26, color:'#0A0A0B', letterSpacing:-0.5 },
+  detectionScore: { fontFamily:FONT.display, fontSize:38, color:'#0A0A0B', letterSpacing:-1 },
+
+  listeningBanner: { ...PANEL.base, paddingVertical:12, paddingHorizontal:14, flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:8, height:52 },
+  listeningText: { fontFamily:FONT.mono, fontSize:9, color:TEXT.t3, letterSpacing:2, textTransform:'uppercase' },
+  stateChip: { borderWidth:1, borderRadius:R, paddingHorizontal:8, paddingVertical:3 },
+  stateChipText: { fontFamily:FONT.mono, fontSize:9, letterSpacing:1, textTransform:'uppercase' },
+
+  boardViewer: { height:180, marginBottom:8, borderRadius:R, overflow:'hidden' },
+
+  imuStrip: { flexDirection:'row', borderWidth:1, borderColor:LINE.dim, borderRadius:R, overflow:'hidden', marginBottom:8 },
+  imuCell: { flex:1, padding:9, backgroundColor:BG.b2, borderRightWidth:1, borderRightColor:LINE.dim },
+  imuCellLast: { borderRightWidth:0 },
+  imuLabel: { fontFamily:FONT.mono, fontSize:8, color:ACCENT, letterSpacing:0.6, textTransform:'uppercase' },
+  imuValue: { fontFamily:FONT.mono, fontSize:13, color:TEXT.t1, marginTop:2 },
+
+  fsrRow: { flexDirection:'row', gap:6, marginBottom:8 },
+  fsrCell: { flex:1, gap:3 },
+  fsrLabel: { fontSize:8, fontFamily:FONT.mono, letterSpacing:1, textTransform:'uppercase', textAlign:'center' },
+  fsrBarBg: { height:4, backgroundColor:BG.b4, borderRadius:0, overflow:'hidden' },
+  fsrBarFill: { height:'100%' },
+
+  sessionBtn: { ...BTN.base, ...BTN.primary, justifyContent:'center', marginTop:8 },
+  sessionBtnStop: { ...BTN.base, ...BTN.danger, justifyContent:'center', marginTop:8 },
+  sessionBtnText: { ...BTN.primaryText },
+
+  feed: { flex:1, marginTop:4 },
+  feedEmpty: { color:TEXT.t3, textAlign:'center', marginTop:12, fontFamily:FONT.mono, fontSize:10, letterSpacing:1 },
+  feedItem: { flexDirection:'row', alignItems:'center', paddingVertical:8, borderBottomWidth:1, borderBottomColor:LINE.dim, gap:8 },
+  feedIndex: { color:TEXT.t4, fontSize:9, fontFamily:FONT.mono, width:24 },
+  feedDot: { width:5, height:5 },
+  feedTrick: { color:TEXT.t1, fontSize:12, fontFamily:FONT.display, flex:1, letterSpacing:-0.2 },
+  feedScore: { color:ACCENT, fontSize:14, fontFamily:FONT.display, letterSpacing:-0.5 },
+
   debugCell: { flex:1, ...PANEL.base, padding:7, alignItems:'center' },
   debugLabel: { color:T.CYAN, fontSize:9, fontFamily:FONT.mono, letterSpacing:1, textTransform:'uppercase' },
   debugValue: { color:TEXT.t1, fontSize:13, fontFamily:FONT.bodySb },
