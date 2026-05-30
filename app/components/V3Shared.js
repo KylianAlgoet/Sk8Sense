@@ -1,6 +1,6 @@
 // SkateSense MIS v3 — Shared Components
 import React from 'react';
-import { View, Text, StyleSheet, Animated, Svg } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { BG, TEXT, LINE, ACCENT, FONT, R, PANEL } from '../design-tokens';
 
 // ── Background Grid ────────────────────────────────────────────────────────
@@ -114,9 +114,9 @@ export function V3MotionAI({ text, cta, onCta }) {
         </View>
       </View>
       {cta && (
-        <View style={ai.ctaWrap}>
-          <Text style={ai.ctaBtn} onPress={onCta}>{cta}</Text>
-        </View>
+        <TouchableOpacity style={ai.ctaWrap} onPress={onCta} activeOpacity={0.85}>
+          <Text style={ai.ctaBtn}>{cta}</Text>
+        </TouchableOpacity>
       )}
     </View>
   );
