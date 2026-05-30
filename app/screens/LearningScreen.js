@@ -47,10 +47,10 @@ const COMING_SOON = [
 ];
 
 export default function LearningScreen({ navigation }) {
-  const { setCurrentTrick } = useTrickStore();
+  const { selectTrick } = useTrickStore();
 
   const handleSelect = (trick) => {
-    setCurrentTrick(trick.id);
+    selectTrick(trick.id);
     navigation.navigate('TrickIntro', { trickId: trick.id });
   };
 
