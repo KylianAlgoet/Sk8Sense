@@ -26,7 +26,7 @@ const SLIDES = [
   },
 ];
 
-export default function OnboardingScreen({ navigation }) {
+export default function OnboardingScreen({ onComplete }) {
   const [index, setIndex] = useState(0);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -41,7 +41,7 @@ export default function OnboardingScreen({ navigation }) {
     if (index < SLIDES.length - 1) {
       goTo(index + 1);
     } else {
-      navigation.replace('Home');
+      onComplete();
     }
   };
 
@@ -51,7 +51,7 @@ export default function OnboardingScreen({ navigation }) {
   return (
     <View style={styles.container}>
       {/* Skip */}
-      <TouchableOpacity style={styles.skip} onPress={() => navigation.replace('Home')}>
+      <TouchableOpacity style={styles.skip} onPress={onComplete}>
         <Text style={styles.skipText}>Skip</Text>
       </TouchableOpacity>
 

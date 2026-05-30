@@ -8,7 +8,7 @@ const useBleStore = create((set) => ({
   connectedDevice: null,
   isScanning: false,
   devices: [],
-  sensorData: { ax: 0, ay: 0, az: 9.8, gx: 0, gy: 0, gz: 0, trick: 'none' },
+  sensorData: { ax: 0, ay: 0, az: 9.8, gx: 0, gy: 0, gz: 0, trick: 'none', f1: 0, f2: 0, f3: 0, f4: 0 },
 
   setManager: (manager) => set({ manager }),
   setScanning: (isScanning) => set({ isScanning }),

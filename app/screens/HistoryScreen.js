@@ -1,5 +1,7 @@
-import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 import useSessionStore from '../store/sessionStore';
+import useAuthStore from '../store/authStore';
 
 function formatDuration(seconds) {
   const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -16,28 +18,70 @@ function topTrick(tricks) {
   return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
 }
 
+function TrickChart({ sessions }) {
+  const recent = [...sessions].slice(0, 7).reverse();
+  if (!recent.length) return null;
+  const maxTricks = Math.max(...recent.map((s) => s.tricks.length), 1);
+
+  return (
+    <View style={chart.container}>
+      <Text style={chart.title}>TRICKS PER SESSION</Text>
+      <View style={chart.bars}>
+        {recent.map((session) => {
+          const barHeight = Math.max((session.tricks.length / maxTricks) * 64, 4);
+          return (
+            <View key={session.id} style={chart.barWrap}>
+              <Text style={chart.barCount}>{session.tricks.length || ''}</Text>
+              <View style={[chart.bar, { height: barHeight }]} />
+              <Text style={chart.barLabel}>
+                {new Date(session.startTime).toLocaleDateString('nl-BE', { day: 'numeric', month: 'numeric' })}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 export default function HistoryScreen({ navigation }) {
-  const { sessions } = useSessionStore();
+  const { sessions, loadSessions } = useSessionStore();
+  const { user } = useAuthStore();
+  const [loadingCloud, setLoadingCloud] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setLoadingCloud(true);
+      loadSessions().finally(() => setLoadingCloud(false));
+    }
+  }, [user]);
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>← Terug</Text>
+          <Text style={styles.back}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Sessie History</Text>
+        <Text style={styles.title}>History</Text>
       </View>
+
+      {loadingCloud && (
+        <ActivityIndicator color="#e94560" style={{ marginBottom: 8, marginHorizontal: 24 }} />
+      )}
 
       <FlatList
         data={sessions}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        ListHeaderComponent={<TrickChart sessions={sessions} />}
         ListEmptyComponent={
-          <View style={styles.emptyWrap}>
-            <Text style={styles.emptyIcon}>🛹</Text>
-            <Text style={styles.emptyTitle}>Nog geen sessies</Text>
-            <Text style={styles.emptyText}>Verbind met je board en start een sessie</Text>
-          </View>
+          !loadingCloud ? (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.emptyIcon}>🛹</Text>
+              <Text style={styles.emptyTitle}>No sessions yet</Text>
+              <Text style={styles.emptyText}>Connect your board and start a session</Text>
+            </View>
+          ) : null
         }
         renderItem={({ item }) => {
           const best = topTrick(item.tricks);
@@ -59,7 +103,7 @@ export default function HistoryScreen({ navigation }) {
               <View style={styles.cardStats}>
                 <View style={styles.cardStat}>
                   <Text style={styles.cardStatValue}>{formatDuration(item.duration)}</Text>
-                  <Text style={styles.cardStatLabel}>duur</Text>
+                  <Text style={styles.cardStatLabel}>duration</Text>
                 </View>
                 <View style={styles.cardStat}>
                   <Text style={styles.cardStatValue}>{item.tricks.length}</Text>
@@ -80,6 +124,19 @@ export default function HistoryScreen({ navigation }) {
   );
 }
 
+const chart = StyleSheet.create({
+  container: {
+    backgroundColor: '#16213e', borderRadius: 12,
+    padding: 16, marginBottom: 16,
+  },
+  title: { color: '#aaa', fontSize: 11, fontWeight: 'bold', letterSpacing: 2, marginBottom: 12 },
+  bars: { flexDirection: 'row', alignItems: 'flex-end', height: 88, gap: 6 },
+  barWrap: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 4 },
+  barCount: { color: '#fff', fontSize: 10, fontWeight: 'bold', height: 14 },
+  bar: { width: '100%', backgroundColor: '#e94560', borderRadius: 3 },
+  barLabel: { color: '#444', fontSize: 9, textAlign: 'center' },
+});
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#1a1a2e', paddingTop: 52 },
   header: { paddingHorizontal: 24, marginBottom: 20 },
@@ -93,10 +150,7 @@ const styles = StyleSheet.create({
   emptyTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
   emptyText: { color: '#555', fontSize: 14, textAlign: 'center' },
 
-  card: {
-    backgroundColor: '#16213e', borderRadius: 12,
-    padding: 16, marginBottom: 12,
-  },
+  card: { backgroundColor: '#16213e', borderRadius: 12, padding: 16, marginBottom: 12 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   cardDate: { color: '#fff', fontSize: 15, fontWeight: '600', textTransform: 'capitalize' },
   cardTime: { color: '#555', fontSize: 13 },

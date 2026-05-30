@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -48,7 +48,9 @@
           ],
           "bluetoothAlwaysPermission": "SK8Sense needs Bluetooth to connect to your skateboard sensor."
         }
-      ]
+      ],
+      "expo-asset",
+      "expo-font"
     ],
     "extra": {
       "eas": {
