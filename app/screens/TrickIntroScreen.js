@@ -1,36 +1,27 @@
 import { useState } from 'react';
-import {
-  View, Text, TouchableOpacity, StyleSheet,
-  ScrollView, StatusBar,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useTrickStore from '../store/trickStore';
+import { BG, TEXT, LINE, ACCENT, FONT, R } from '../design-tokens';
+import { V3Grid, V3SectionHead, V3Chip } from '../components/V3Shared';
 
-const DIFFICULTIES = ['', 'Beginner', 'Easy', 'Intermediate', 'Advanced', 'Expert'];
+const DIFFICULTIES = ['', 'BEGINNER', 'EASY', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'];
 
-function StepCard({ step, index, trickColor }) {
+function StepCard({ step, index }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <TouchableOpacity
-      style={[styles.stepCard, expanded && { borderColor: trickColor + '55' }]}
-      onPress={() => setExpanded((v) => !v)}
+      style={[s.stepCard, expanded && { borderColor: `${ACCENT}55` }]}
+      onPress={() => setExpanded(v => !v)}
       activeOpacity={0.8}
     >
-      <View style={styles.stepHeader}>
-        <View style={[styles.stepNum, { backgroundColor: trickColor + '22', borderColor: trickColor + '44' }]}>
-          <Text style={[styles.stepNumText, { color: trickColor }]}>{index + 1}</Text>
-        </View>
-        <Text style={styles.stepTitle}>{step.title}</Text>
-        <Ionicons
-          name={expanded ? 'chevron-up' : 'chevron-down'}
-          size={16}
-          color="#555"
-        />
+      <View style={s.stepHeader}>
+        <Text style={s.stepCode}>M.{String(index + 1).padStart(2, '0')}</Text>
+        <Text style={s.stepTitle}>{step.title}</Text>
+        <Ionicons name={expanded ? 'remove' : 'add'} size={16} color={TEXT.t3} />
       </View>
-      {expanded && (
-        <Text style={styles.stepTip}>{step.tip}</Text>
-      )}
+      {expanded && <Text style={s.stepTip}>{step.tip}</Text>}
     </TouchableOpacity>
   );
 }
@@ -41,143 +32,90 @@ export default function TrickIntroScreen({ navigation }) {
 
   if (!currentTrick) return null;
 
+  const detectable = ['ollie', 'kickflip', 'heelflip', 'pop_shuvit'].includes(currentTrick.id);
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
+    <View style={[s.container, { paddingTop: insets.top }]}>
+      <V3Grid />
+      <StatusBar barStyle="light-content" backgroundColor={BG.base} />
 
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={20} color="#888" />
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
+          <Ionicons name="arrow-back" size={20} color={TEXT.t2} />
         </TouchableOpacity>
-        {currentTrick.id === 'ollie' || currentTrick.id === 'kickflip' || currentTrick.id === 'heelflip' ? (
-          <View style={styles.sensorBadge}>
-            <Ionicons name="bluetooth" size={11} color={currentTrick.color} />
-            <Text style={[styles.sensorText, { color: currentTrick.color }]}>SK8Sense detectable</Text>
-          </View>
-        ) : null}
+        <Text style={s.headerLabel}>/ TRICK · BRIEFING</Text>
+        {detectable && <V3Chip label="DETECTABLE" variant="live" />}
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Title block */}
-        <View style={[styles.titleBlock, { borderLeftColor: currentTrick.color }]}>
-          <Text style={styles.trickName}>{currentTrick.name}</Text>
-          <View style={styles.tagRow}>
-            <View style={[styles.tag, { backgroundColor: currentTrick.color + '22', borderColor: currentTrick.color + '44' }]}>
-              <Text style={[styles.tagText, { color: currentTrick.color }]}>
-                {DIFFICULTIES[currentTrick.difficulty]}
-              </Text>
+      <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+        {/* Title */}
+        <View style={s.titleBlock}>
+          <View style={s.titleTickTL} /><View style={s.titleTickBR} />
+          <View style={s.titleTop}>
+            <Text style={s.trickCode}>T.{String(currentTrick.id === 'ollie' ? 1 : currentTrick.id === 'kickflip' ? 2 : 3).padStart(2, '0')}</Text>
+            <View style={[s.diffBadge, { borderColor: `${currentTrick.color}55`, backgroundColor: `${currentTrick.color}14` }]}>
+              <Text style={[s.diffText, { color: currentTrick.color }]}>{DIFFICULTIES[currentTrick.difficulty]}</Text>
             </View>
-            <View style={styles.tag}>
-              <Text style={styles.tagText}>{currentTrick.category}</Text>
-            </View>
+            <View style={s.catBadge}><Text style={s.catText}>{currentTrick.category?.toUpperCase()}</Text></View>
           </View>
+          <Text style={s.trickName}>{currentTrick.name}</Text>
         </View>
 
         {/* What is it */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>WHAT IS IT</Text>
-          <Text style={styles.description}>{currentTrick.description}</Text>
-        </View>
+        <V3SectionHead num="/01" label="WHAT IS IT" />
+        <Text style={s.description}>{currentTrick.description}</Text>
+
+        <View style={{ height: 20 }} />
 
         {/* Steps */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>STEPS</Text>
-          {currentTrick.steps.map((step, i) => (
-            <StepCard key={i} step={step} index={i} trickColor={currentTrick.color} />
-          ))}
-        </View>
+        <V3SectionHead num="/02" label="MOVEMENT BREAKDOWN" right={`${currentTrick.steps.length} STEPS`} />
+        {currentTrick.steps.map((step, i) => (
+          <StepCard key={i} step={step} index={i} />
+        ))}
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 110 }} />
       </ScrollView>
 
       {/* CTA */}
-      <View style={[styles.ctaWrap, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        <TouchableOpacity
-          style={styles.ctaBtn}
-          onPress={() => navigation.navigate('Practice')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.ctaBtnText}>START PRACTICE →</Text>
+      <View style={[s.ctaWrap, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <TouchableOpacity style={s.ctaBtn} onPress={() => navigation.navigate('Practice')} activeOpacity={0.85}>
+          <Text style={s.ctaBtnText}>START PRACTICE →</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a' },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: BG.base },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 12,
-  },
-  backBtn: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: '#141414', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: '#2a2a2a',
-  },
-  sensorBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: '#141414', borderRadius: 8,
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderWidth: 1, borderColor: '#2a2a2a',
-  },
-  sensorText: { fontSize: 11, fontWeight: '600' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 12, gap: 12 },
+  backBtn: { width: 36, height: 36, borderRadius: R, backgroundColor: BG.b2, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: LINE.dim },
+  headerLabel: { flex: 1, fontFamily: FONT.mono, fontSize: 9, color: TEXT.t3, letterSpacing: 1.5, textTransform: 'uppercase' },
 
-  content: { paddingHorizontal: 20 },
+  content: { paddingHorizontal: 18, paddingTop: 8 },
 
-  titleBlock: {
-    borderLeftWidth: 3, paddingLeft: 14, marginBottom: 28, marginTop: 8,
-  },
-  trickName: {
-    color: '#f5f5f0', fontSize: 36, fontWeight: 'bold', letterSpacing: -0.5, marginBottom: 10,
-  },
-  tagRow: { flexDirection: 'row', gap: 8 },
-  tag: {
-    paddingHorizontal: 10, paddingVertical: 4,
-    borderRadius: 6, backgroundColor: '#141414',
-    borderWidth: 1, borderColor: '#2a2a2a',
-  },
-  tagText: { color: '#888', fontSize: 12, fontWeight: '600' },
+  titleBlock: { backgroundColor: BG.b2, borderWidth: 1, borderColor: LINE.dim, borderRadius: R, padding: 16, marginBottom: 22, position: 'relative' },
+  titleTickTL: { position: 'absolute', top: -1, left: -1, width: 8, height: 8, borderTopWidth: 1.5, borderLeftWidth: 1.5, borderColor: ACCENT },
+  titleTickBR: { position: 'absolute', bottom: -1, right: -1, width: 8, height: 8, borderBottomWidth: 1.5, borderRightWidth: 1.5, borderColor: ACCENT },
+  titleTop: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  trickCode: { fontFamily: FONT.mono, fontSize: 9, color: ACCENT, letterSpacing: 0.9 },
+  diffBadge: { borderWidth: 1, borderRadius: R, paddingHorizontal: 7, paddingVertical: 3 },
+  diffText: { fontFamily: FONT.mono, fontSize: 8, letterSpacing: 0.9, textTransform: 'uppercase' },
+  catBadge: { backgroundColor: BG.b4, borderRadius: R, paddingHorizontal: 7, paddingVertical: 3 },
+  catText: { fontFamily: FONT.mono, fontSize: 8, color: TEXT.t3, letterSpacing: 0.9 },
+  trickName: { fontFamily: FONT.display, fontSize: 44, color: TEXT.t1, textTransform: 'uppercase', letterSpacing: -1.5 },
 
-  section: { marginBottom: 28 },
-  sectionLabel: {
-    color: '#555', fontSize: 11, fontWeight: 'bold',
-    letterSpacing: 2, marginBottom: 12,
-  },
-  description: { color: '#aaa', fontSize: 15, lineHeight: 23 },
+  description: { fontFamily: FONT.body, fontSize: 14, color: TEXT.t2, lineHeight: 21 },
 
-  stepCard: {
-    backgroundColor: '#141414', borderRadius: 12,
-    padding: 14, marginBottom: 8,
-    borderWidth: 1, borderColor: '#2a2a2a',
-  },
+  stepCard: { backgroundColor: BG.b2, borderRadius: R, padding: 14, marginBottom: 7, borderWidth: 1, borderColor: LINE.dim },
   stepHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  stepNum: {
-    width: 28, height: 28, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1,
-  },
-  stepNumText: { fontSize: 13, fontWeight: 'bold' },
-  stepTitle: { color: '#f5f5f0', fontSize: 14, fontWeight: '600', flex: 1 },
-  stepTip: {
-    color: '#888', fontSize: 13, lineHeight: 20,
-    marginTop: 10, paddingLeft: 40,
-  },
+  stepCode: { fontFamily: FONT.mono, fontSize: 9, color: ACCENT, letterSpacing: 0.6, width: 32 },
+  stepTitle: { fontFamily: FONT.bodySb, fontSize: 14, color: TEXT.t1, flex: 1 },
+  stepTip: { fontFamily: FONT.body, fontSize: 13, color: TEXT.t2, lineHeight: 19, marginTop: 10, paddingLeft: 44 },
 
-  ctaWrap: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    paddingHorizontal: 20, paddingTop: 12,
-    backgroundColor: '#0a0a0a',
-    borderTopWidth: 1, borderTopColor: '#141414',
-  },
-  ctaBtn: {
-    backgroundColor: '#d4ff3d', borderRadius: 12,
-    paddingVertical: 16, alignItems: 'center',
-  },
-  ctaBtnText: { color: '#0a0a0a', fontSize: 15, fontWeight: 'bold', letterSpacing: 1 },
+  ctaWrap: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 18, paddingTop: 12, backgroundColor: BG.base, borderTopWidth: 1, borderTopColor: LINE.dim },
+  ctaBtn: { backgroundColor: ACCENT, borderRadius: R, paddingVertical: 15, alignItems: 'center' },
+  ctaBtnText: { fontFamily: FONT.display, fontSize: 13, color: '#0A0A0B', letterSpacing: 0.5, textTransform: 'uppercase' },
 });

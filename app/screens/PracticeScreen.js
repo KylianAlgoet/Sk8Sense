@@ -8,6 +8,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useTrickStore from '../store/trickStore';
 import useBleStore from '../store/bleStore';
 import SkateboardGL from '../components/SkateboardGL';
+import { BG, TEXT, LINE, ACCENT, FONT, R } from '../design-tokens';
+import { V3Grid } from '../components/V3Shared';
 
 const ROUND_SIZE = 5;
 
@@ -100,77 +102,75 @@ export default function PracticeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={{ height: insets.top, backgroundColor: '#0a0a0a' }} />
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
+      <V3Grid />
+      <View style={{ height: insets.top, backgroundColor: BG.base }} />
+      <StatusBar barStyle="light-content" backgroundColor={BG.base} />
 
+      {/* Top bar */}
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={18} color="#555" />
+          <Ionicons name="arrow-back" size={18} color={TEXT.t2} />
         </TouchableOpacity>
-        <Text style={[styles.trickTitle, { color: currentTrick.color }]}>{currentTrick.name}</Text>
+        <Text style={styles.trickTitle}>{currentTrick.name}</Text>
         <Text style={styles.timer}>{formatTime(elapsed)}</Text>
       </View>
 
+      {/* Step / combine bar */}
       {isCombine ? (
         <View style={styles.combineBar}>
-          <Text style={styles.combineLabel}>FULL ATTEMPT</Text>
+          <Text style={styles.combineLabel}>· FULL ATTEMPT ·</Text>
           <Text style={styles.roundCount}>{roundAttempts.length}/{ROUND_SIZE}</Text>
         </View>
       ) : (
         <View style={styles.stepBar}>
-          <Text style={styles.stepLabel}>Step {stepIndex + 1} of {totalSteps}</Text>
+          <Text style={styles.stepLabel}>STEP {String(stepIndex + 1).padStart(2, '0')} / {String(totalSteps).padStart(2, '0')}</Text>
           <View style={styles.stepDots}>
             {Array.from({ length: totalSteps }).map((_, i) => (
               <View key={i} style={[
                 styles.stepDot,
-                i < stepIndex   && { backgroundColor: currentTrick.color },
-                i === stepIndex && { backgroundColor: currentTrick.color, transform: [{ scale: 1.4 }] },
-                i > stepIndex   && { backgroundColor: '#2a2a2a' },
+                i < stepIndex   && { backgroundColor: ACCENT },
+                i === stepIndex && { backgroundColor: ACCENT, width: 18 },
+                i > stepIndex   && { backgroundColor: BG.b4 },
               ]} />
             ))}
           </View>
         </View>
       )}
 
-      <SkateboardGL
-        stepIndex={stepIndex}
-        phase={phase}
-        trickColor={currentTrick.color}
-        style={styles.board}
-      />
+      {/* Board */}
+      <SkateboardGL stepIndex={stepIndex} phase={phase} trickColor={ACCENT} style={styles.board} />
 
+      {/* Instruction card */}
       <Animated.View style={[styles.instructionCard, {
-        borderColor: lastResult === 'success' ? currentTrick.color
-          : lastResult === 'fail' ? '#e94560' : '#2a2a2a',
+        borderColor: lastResult === 'success' ? ACCENT
+          : lastResult === 'fail' ? '#FF4438' : LINE.dim,
         opacity: detectOpacity,
       }]}>
         {lastResult && (
           <View style={styles.resultRow}>
-            <Ionicons
-              name={lastResult === 'success' ? 'checkmark-circle' : 'refresh'}
-              size={16}
-              color={lastResult === 'success' ? currentTrick.color : '#e94560'}
-            />
-            <Text style={[styles.resultText, { color: lastResult === 'success' ? currentTrick.color : '#e94560' }]}>
+            <View style={[styles.resultDot, { backgroundColor: lastResult === 'success' ? ACCENT : '#FF4438' }]} />
+            <Text style={[styles.resultText, { color: lastResult === 'success' ? ACCENT : '#FF4438' }]}>
               {lastResult === 'success' ? (isCombine ? 'LANDED' : 'GOT IT') : 'TRY AGAIN'}
             </Text>
           </View>
         )}
         <Text style={styles.instructionTitle}>
-          {isCombine ? 'Put it all together' : step.title}
+          {isCombine ? 'PUT IT ALL TOGETHER' : step.title}
         </Text>
         <Text style={styles.instructionTip}>
           {isCombine ? (currentTip || currentTrick.coachingTips[0]) : step.tip}
         </Text>
       </Animated.View>
 
-      <View style={[styles.sensorBadge, connectedDevice && { borderColor: '#4CAF5033' }]}>
-        <Ionicons name="bluetooth" size={11} color={connectedDevice ? '#4CAF50' : '#FF9800'} />
-        <Text style={[styles.sensorText, { color: connectedDevice ? '#4CAF50' : '#FF9800' }]}>
-          {connectedDevice ? 'CONNECTED' : 'SIMULATED'}
+      {/* Sensor badge */}
+      <View style={styles.sensorBadge}>
+        <View style={[styles.sensorDot, { backgroundColor: connectedDevice ? '#4CAF50' : '#FFB020' }]} />
+        <Text style={[styles.sensorText, { color: connectedDevice ? '#4CAF50' : '#FFB020' }]}>
+          {connectedDevice ? 'LIVE SENSOR' : 'SIMULATED'}
         </Text>
       </View>
 
+      {/* CTA */}
       <View style={[styles.ctaWrap, { paddingBottom: Math.max(insets.bottom, 14) }]}>
         <TouchableOpacity
           style={[styles.ctaBtn, detecting && styles.ctaBtnDisabled]}
@@ -178,16 +178,20 @@ export default function PracticeScreen({ navigation }) {
           disabled={detecting}
           activeOpacity={0.85}
         >
-          <Text style={styles.ctaBtnText}>{detecting ? 'DETECTING...' : 'I TRIED IT'}</Text>
+          <Text style={[styles.ctaBtnText, detecting && { color: TEXT.t3 }]}>
+            {detecting ? 'DETECTING...' : 'I TRIED IT'}
+          </Text>
         </TouchableOpacity>
       </View>
 
+      {/* Round pause modal */}
       <Modal visible={showPauseModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>ROUND DONE</Text>
-            <Text style={[styles.modalScore, { color: currentTrick.color }]}>{landedInRound}/{ROUND_SIZE}</Text>
-            <Text style={styles.modalPct}>{Math.round((landedInRound / ROUND_SIZE) * 100)}% success rate</Text>
+            <View style={styles.modalTickTL} /><View style={styles.modalTickBR} />
+            <Text style={styles.modalTitle}>· ROUND DONE ·</Text>
+            <Text style={styles.modalScore}>{landedInRound}/{ROUND_SIZE}</Text>
+            <Text style={styles.modalPct}>{Math.round((landedInRound / ROUND_SIZE) * 100)}% SUCCESS RATE</Text>
             <Text style={styles.modalMsg}>{ROUND_MESSAGES[Math.min(landedInRound, 5)]}</Text>
             <TouchableOpacity style={styles.modalPrimaryBtn} onPress={() => {
               setRoundAttempts([]); setLastResult(null); setCurrentTip(''); setShowPauseModal(false);
@@ -205,38 +209,49 @@ export default function PracticeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a' },
-  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10, gap: 12 },
-  backBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#141414', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#2a2a2a' },
-  trickTitle: { fontSize: 18, fontWeight: 'bold', flex: 1 },
-  timer: { color: '#444', fontSize: 14, fontWeight: '600' },
-  stepBar: { paddingHorizontal: 20, paddingBottom: 8 },
-  stepLabel: { color: '#444', fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginBottom: 7 },
-  stepDots: { flexDirection: 'row', gap: 6 },
-  stepDot: { width: 8, height: 8, borderRadius: 4 },
-  combineBar: { paddingHorizontal: 20, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  combineLabel: { color: '#d4ff3d', fontSize: 11, fontWeight: 'bold', letterSpacing: 2 },
-  roundCount: { color: '#444', fontSize: 13, fontWeight: '600' },
-  board: { height: 240 },
-  instructionCard: { marginHorizontal: 20, backgroundColor: '#141414', borderRadius: 14, padding: 16, borderWidth: 1, marginBottom: 8 },
+  container: { flex: 1, backgroundColor: BG.base },
+  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 10, gap: 12 },
+  backBtn: { width: 34, height: 34, borderRadius: R, backgroundColor: BG.b2, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: LINE.dim },
+  trickTitle: { fontFamily: FONT.display, fontSize: 18, color: TEXT.t1, textTransform: 'uppercase', letterSpacing: -0.5, flex: 1 },
+  timer: { color: TEXT.t3, fontFamily: FONT.mono, fontSize: 14 },
+
+  stepBar: { paddingHorizontal: 18, paddingBottom: 8 },
+  stepLabel: { color: TEXT.t3, fontFamily: FONT.mono, fontSize: 9, letterSpacing: 1.5, marginBottom: 7, textTransform: 'uppercase' },
+  stepDots: { flexDirection: 'row', gap: 5 },
+  stepDot: { width: 8, height: 4, borderRadius: 0 },
+
+  combineBar: { paddingHorizontal: 18, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  combineLabel: { color: ACCENT, fontFamily: FONT.mono, fontSize: 9, letterSpacing: 2, textTransform: 'uppercase' },
+  roundCount: { color: TEXT.t3, fontFamily: FONT.mono, fontSize: 13 },
+
+  board: { height: 220, marginHorizontal: 18, borderRadius: R, overflow: 'hidden' },
+
+  instructionCard: { marginHorizontal: 18, marginTop: 8, backgroundColor: BG.b2, borderRadius: R, padding: 16, borderWidth: 1, marginBottom: 8 },
   resultRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8 },
-  resultText: { fontSize: 11, fontWeight: 'bold', letterSpacing: 1 },
-  instructionTitle: { color: '#f5f5f0', fontSize: 17, fontWeight: 'bold', marginBottom: 5 },
-  instructionTip: { color: '#666', fontSize: 13, lineHeight: 19 },
-  sensorBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'center', marginBottom: 8, backgroundColor: '#141414', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: '#2a2a2a' },
-  sensorText: { fontSize: 11, fontWeight: '600' },
-  ctaWrap: { paddingHorizontal: 20, paddingTop: 4 },
-  ctaBtn: { backgroundColor: '#d4ff3d', borderRadius: 12, paddingVertical: 15, alignItems: 'center' },
-  ctaBtnDisabled: { backgroundColor: '#2a2a2a' },
-  ctaBtnText: { color: '#0a0a0a', fontSize: 15, fontWeight: 'bold', letterSpacing: 1 },
+  resultDot: { width: 6, height: 6 },
+  resultText: { fontFamily: FONT.mono, fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase' },
+  instructionTitle: { color: TEXT.t1, fontFamily: FONT.display, fontSize: 17, textTransform: 'uppercase', letterSpacing: -0.3, marginBottom: 5 },
+  instructionTip: { color: TEXT.t2, fontFamily: FONT.body, fontSize: 13, lineHeight: 19 },
+
+  sensorBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'center', marginBottom: 8, backgroundColor: BG.b2, borderRadius: R, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: LINE.dim },
+  sensorDot: { width: 6, height: 6, borderRadius: 3 },
+  sensorText: { fontFamily: FONT.mono, fontSize: 9, letterSpacing: 1, textTransform: 'uppercase' },
+
+  ctaWrap: { paddingHorizontal: 18, paddingTop: 4 },
+  ctaBtn: { backgroundColor: ACCENT, borderRadius: R, paddingVertical: 15, alignItems: 'center' },
+  ctaBtnDisabled: { backgroundColor: BG.b4 },
+  ctaBtnText: { color: '#0A0A0B', fontFamily: FONT.display, fontSize: 14, letterSpacing: 0.5, textTransform: 'uppercase' },
+
   modalOverlay: { flex: 1, backgroundColor: '#000000cc', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: '#141414', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 28, paddingBottom: 40, alignItems: 'center', borderTopWidth: 1, borderColor: '#2a2a2a' },
-  modalTitle: { color: '#444', fontSize: 11, fontWeight: 'bold', letterSpacing: 3, marginBottom: 16 },
-  modalScore: { fontSize: 52, fontWeight: 'bold', lineHeight: 60 },
-  modalPct: { color: '#444', fontSize: 14, marginBottom: 10 },
-  modalMsg: { color: '#888', fontSize: 15, textAlign: 'center', marginBottom: 24, lineHeight: 22 },
-  modalPrimaryBtn: { backgroundColor: '#d4ff3d', borderRadius: 12, width: '100%', paddingVertical: 14, alignItems: 'center', marginBottom: 10 },
-  modalPrimaryText: { color: '#0a0a0a', fontSize: 14, fontWeight: 'bold', letterSpacing: 1 },
-  modalSecondaryBtn: { borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 12, width: '100%', paddingVertical: 14, alignItems: 'center' },
-  modalSecondaryText: { color: '#555', fontSize: 14 },
+  modalSheet: { backgroundColor: BG.b2, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 28, paddingBottom: 40, alignItems: 'center', borderTopWidth: 1, borderColor: LINE.mid, position: 'relative' },
+  modalTickTL: { position: 'absolute', top: -1, left: 18, width: 8, height: 8, borderTopWidth: 1.5, borderLeftWidth: 1.5, borderColor: ACCENT },
+  modalTickBR: { position: 'absolute', top: -1, right: 18, width: 8, height: 8, borderTopWidth: 1.5, borderRightWidth: 1.5, borderColor: ACCENT },
+  modalTitle: { color: TEXT.t3, fontFamily: FONT.mono, fontSize: 9, letterSpacing: 3, marginBottom: 16, textTransform: 'uppercase' },
+  modalScore: { fontFamily: FONT.display, fontSize: 52, color: ACCENT, lineHeight: 56, letterSpacing: -2 },
+  modalPct: { color: TEXT.t3, fontFamily: FONT.mono, fontSize: 11, marginBottom: 10, marginTop: 4, letterSpacing: 1 },
+  modalMsg: { color: TEXT.t2, fontFamily: FONT.body, fontSize: 14, textAlign: 'center', marginBottom: 24, lineHeight: 21 },
+  modalPrimaryBtn: { backgroundColor: ACCENT, borderRadius: R, width: '100%', paddingVertical: 14, alignItems: 'center', marginBottom: 10 },
+  modalPrimaryText: { color: '#0A0A0B', fontFamily: FONT.display, fontSize: 13, letterSpacing: 0.5, textTransform: 'uppercase' },
+  modalSecondaryBtn: { borderWidth: 1, borderColor: LINE.mid, borderRadius: R, width: '100%', paddingVertical: 14, alignItems: 'center' },
+  modalSecondaryText: { color: TEXT.t2, fontFamily: FONT.mono, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
 });
