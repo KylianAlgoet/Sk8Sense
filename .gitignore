@@ -1,0 +1,26 @@
+# Dependencies and local build output
+node_modules/
+app/node_modules/
+.expo/
+app/.expo-check/
+dist/
+web-build/
+
+# Native/generated app folders
+app/ios/
+app/android/
+firmware/.pio/
+firmware/.vscode/
+
+# Local secrets
+.env
+.env.*
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.log
+
+# Preserved local backups and old nested repos.
+# Kept on disk, not part of the clean project structure.
+archive/

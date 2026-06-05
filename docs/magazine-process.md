@@ -418,7 +418,7 @@ Externe focus instructies ("get closer to the board") zijn bewezen effectiever d
 
 # 14. STIJLGIDS
 
-*Zie design-tokens.js in de repository voor volledige implementatie*
+*Zie `app/design-tokens.js` voor de actieve implementatie en `docs/design/design-tokens-reference.js` voor de referentie-export.*
 
 ## Kleurpalette
 ```js
@@ -528,7 +528,7 @@ MT3608 OUT- → ESP32 GND
 SK8Sense/
 ├── firmware/                  # ESP32 Arduino C++ code
 │   └── src/main.cpp           # Hoofdfirmware
-├── app/Sk8Sense/app/          # React Native app
+├── app/                       # React Native Expo app
 │   ├── App.js                 # Root met font loading
 │   ├── design-tokens.js       # Compleet design systeem
 │   ├── components/
@@ -545,7 +545,9 @@ SK8Sense/
 │   └── config/
 │       ├── firebase.js        # Firebase config (vul in)
 │       └── ai.js              # Anthropic API key (gitignored)
-└── docs/                      # Documentatie
+├── hardware/enclosure/        # STL/UFP bestanden voor de behuizing
+├── docs/                      # Documentatie, proces, screenshots en testlogs
+└── archive/                   # Oude geneste kopie, niet actief
 ```
 
 ## Firmware aanpassen
@@ -621,7 +623,7 @@ export const AI_MODEL = 'claude-haiku-4-5-20251001';
 
 ## Afhankelijkheden updaten
 ```bash
-cd app/Sk8Sense/app
+cd app
 npx expo install         # Expo-compatibele versies
 npm install              # Overige packages
 ```

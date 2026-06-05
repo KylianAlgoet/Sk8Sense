@@ -531,7 +531,7 @@ Design tokens:
 
 ```text
 app/design-tokens.js
-design-tokens.js
+docs/design/design-tokens-reference.js
 ```
 
 ## Tech Stack
@@ -602,22 +602,30 @@ SK8Sense/
     hardware-research-final.md
     sensor-mounting-final.md
     sprint-planning.md
+    design/
+      design-tokens-reference.js
+    test-logs/
+      logs.txt
     magazine/
+  hardware/
+    enclosure/
+      skatesense_base.stl
+      skatesense_lid.stl
+      electronics_base.stl
+      electronics_lid.stl
+      UM2C_electronics_enclosure.ufp
   models/
-  skatesense_base.stl
-  skatesense_lid.stl
-  electronics_base.stl
-  electronics_lid.stl
-  UM2C_electronics_enclosure.ufp
+  archive/
+    legacy-nested-repo/       oude kopie, niet actief
 ```
 
-Gebruik voor ontwikkeling de top-level `app/` map. De map `app/Sk8Sense/` is een geneste kopie/snapshot en is niet het primaire startpunt.
+Gebruik voor ontwikkeling de top-level `app/` map. De oude geneste kopie is bewaard in `archive/legacy-nested-repo/`, maar is geen actief startpunt.
 
 ## App Installeren En Draaien
 
 Vereisten:
 
-- Node.js 20 of nieuwer;
+- Node.js 20.19.4 of nieuwer;
 - npm;
 - Expo tooling via `npx expo`;
 - Android toestel voor echte BLE;
@@ -666,10 +674,13 @@ app/config/ai.js
 
 Voorbeeld:
 
-```js
-export const ANTHROPIC_API_KEY = 'your-api-key';
-export const AI_MODEL = 'claude-haiku-4-5-20251001';
+Zet voor echte AI-feedback een lokale environment variable:
+
+```powershell
+$env:EXPO_PUBLIC_ANTHROPIC_API_KEY='your-api-key'
 ```
+
+Zonder key blijft de app werken, maar de AI Coach geeft dan geen gegenereerde tekst terug.
 
 ## Firmware Builden En Uploaden
 

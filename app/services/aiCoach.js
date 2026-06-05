@@ -2,6 +2,8 @@ import { ANTHROPIC_API_KEY, AI_MODEL } from '../config/ai';
 
 // Send a message to Claude and get coaching feedback
 async function callClaude(prompt) {
+  if (!ANTHROPIC_API_KEY) return null;
+
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
