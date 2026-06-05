@@ -18,7 +18,7 @@ Dit is geen los idee en geen enkel schermconcept. SK8Sense is een werkend hardwa
 - AI-coaching geeft korte feedback op basis van sessie- en trickdata;
 - de sensormodule zit in een fysieke 3D-geprinte behuizing voor montage onder het deck.
 
-Terminologie: de eerste breadboardfase was een technische haalbaarheidstest. Het eindresultaat van dit project is een werkend prototype. In de magazine-tekst hoort het finale resultaat dus niet beschreven te worden als alleen een concept, maar als een gebouwd, getest en geïntegreerd prototype.
+Terminologie: de eerste breadboardfase was een technische haalbaarheidstest. Het eindresultaat van dit project is een werkend prototype.
 
 ## Onderzoeksvraag
 
@@ -145,11 +145,11 @@ Wanneer een gebruiker ingelogd is, wordt de sessie opgeslagen in Firestore. Daar
 
 De learning tab helpt skaters om de MVP-tricks stap voor stap te begrijpen.
 
-| Trick | Doel |
-| --- | --- |
-| Ollie | De basis: pop, slide, board levelen en landen |
-| Kickflip | Flick, fliprotatie, catch en landing |
-| Pop shove-it | Tail scoop en horizontale boardrotatie |
+| Trick        | Doel                                          |
+| ------------ | --------------------------------------------- |
+| Ollie        | De basis: pop, slide, board levelen en landen |
+| Kickflip     | Flick, fliprotatie, catch en landing          |
+| Pop shove-it | Tail scoop en horizontale boardrotatie        |
 
 Elke trick heeft:
 
@@ -211,13 +211,13 @@ SHUV_THRESHOLD  = 160.0f
 
 Ondersteunde detecties:
 
-| Trick | Detectielogica |
-| --- | --- |
-| Ollie | Airtime zonder dominante flip- of shuv-rotatie |
-| Kickflip | Sterke positieve X-rotatie tijdens airtime |
-| Heelflip | Sterke negatieve X-rotatie tijdens airtime |
-| Backside shuv | Sterke Y-rotatie in backside richting |
-| Frontside shuv | Sterke Y-rotatie in frontside richting |
+| Trick          | Detectielogica                                 |
+| -------------- | ---------------------------------------------- |
+| Ollie          | Airtime zonder dominante flip- of shuv-rotatie |
+| Kickflip       | Sterke positieve X-rotatie tijdens airtime     |
+| Heelflip       | Sterke negatieve X-rotatie tijdens airtime     |
+| Backside shuv  | Sterke Y-rotatie in backside richting          |
+| Frontside shuv | Sterke Y-rotatie in frontside richting         |
 
 ## AI Coaching
 
@@ -261,30 +261,30 @@ Skateboard
 
 ## Hardware Componenten
 
-| Component | Functie | Status |
-| --- | --- | --- |
-| ESP32-S WROOM 38-pin | Microcontroller + BLE | Werkend |
-| MPU6050 | Accelerometer + gyroscoop | Werkend op 100 Hz |
-| 4x FSR 402 | Drukzones onder griptape | Alle 4 geisoleerd werkend |
-| LiPo 3.7V 2000 mAh | Batterij | Werkend |
-| TP4056 | LiPo laadmodule | Werkend |
-| MT3608 | Boost van 3.7V naar 5V | Noodzakelijk en werkend |
-| Schuifschakelaar | Aan/uit | Werkend |
-| Perfboard | Permanente montage | Gesoldeerd |
-| PETG-behuizing | Bescherming onder deck | Finale versie |
+| Component            | Functie                   | Status                    |
+| -------------------- | ------------------------- | ------------------------- |
+| ESP32-S WROOM 38-pin | Microcontroller + BLE     | Werkend                   |
+| MPU6050              | Accelerometer + gyroscoop | Werkend op 100 Hz         |
+| 4x FSR 402           | Drukzones onder griptape  | Alle 4 geisoleerd werkend |
+| LiPo 3.7V 2000 mAh   | Batterij                  | Werkend                   |
+| TP4056               | LiPo laadmodule           | Werkend                   |
+| MT3608               | Boost van 3.7V naar 5V    | Noodzakelijk en werkend   |
+| Schuifschakelaar     | Aan/uit                   | Werkend                   |
+| Perfboard            | Permanente montage        | Gesoldeerd                |
+| PETG-behuizing       | Bescherming onder deck    | Finale versie             |
 
 ## Pinout
 
-| Onderdeel | ESP32 pin | Functie |
-| --- | --- | --- |
-| MPU6050 SDA | GPIO21 | I2C data |
-| MPU6050 SCL | GPIO22 | I2C clock |
-| FSR nose pocket | GPIO34 | ADC |
-| FSR heel side | GPIO35 | ADC |
-| FSR toe side | GPIO32 | ADC |
-| FSR tail pocket | GPIO33 | ADC |
-| Voeding | VIN/5V | Via MT3608 boost |
-| GND | GND | Gemeenschappelijke massa |
+| Onderdeel       | ESP32 pin | Functie                  |
+| --------------- | --------- | ------------------------ |
+| MPU6050 SDA     | GPIO21    | I2C data                 |
+| MPU6050 SCL     | GPIO22    | I2C clock                |
+| FSR nose pocket | GPIO34    | ADC                      |
+| FSR heel side   | GPIO35    | ADC                      |
+| FSR toe side    | GPIO32    | ADC                      |
+| FSR tail pocket | GPIO33    | ADC                      |
+| Voeding         | VIN/5V    | Via MT3608 boost         |
+| GND             | GND       | Gemeenschappelijke massa |
 
 FSR voltage divider:
 
@@ -308,12 +308,12 @@ Waarom daar:
 
 De FSR-sensoren zitten onder het griptape op vier drukzones:
 
-| FSR | Positie | Wat het meet |
-| --- | --- | --- |
+| FSR         | Positie              | Wat het meet                      |
+| ----------- | -------------------- | --------------------------------- |
 | Nose pocket | Voorste voet vooraan | Nose press, manual, catch-context |
-| Heel side | Hielzijde | Kickflip/flick-context |
-| Toe side | Teenzijde | Heelflip/flick-context |
-| Tail pocket | Achterste voet | Pop-kracht |
+| Heel side   | Hielzijde            | Kickflip/flick-context            |
+| Toe side    | Teenzijde            | Heelflip/flick-context            |
+| Tail pocket | Achterste voet       | Pop-kracht                        |
 
 ## Behuizing
 
@@ -370,31 +370,31 @@ Voorbeeldpayload:
 
 ```json
 {
-  "ax": -4.3,
-  "ay": 0.4,
-  "az": 8.0,
-  "gx": -5.8,
-  "gy": 1.3,
-  "gz": 0.6,
-  "trick": "none",
-  "f1": 0,
-  "f2": 0,
-  "f3": 0,
-  "f4": 0
+	"ax": -4.3,
+	"ay": 0.4,
+	"az": 8.0,
+	"gx": -5.8,
+	"gy": 1.3,
+	"gz": 0.6,
+	"trick": "none",
+	"f1": 0,
+	"f2": 0,
+	"f3": 0,
+	"f4": 0
 }
 ```
 
 Velden:
 
-| Veld | Betekenis |
-| --- | --- |
-| `ax`, `ay`, `az` | Acceleratie in m/s^2 |
+| Veld             | Betekenis                 |
+| ---------------- | ------------------------- |
+| `ax`, `ay`, `az` | Acceleratie in m/s^2      |
 | `gx`, `gy`, `gz` | Gyroscooprotatie in deg/s |
-| `trick` | Herkende trick of `none` |
-| `f1` | FSR nose, 0-1023 |
-| `f2` | FSR heel, 0-1023 |
-| `f3` | FSR toe, 0-1023 |
-| `f4` | FSR tail, 0-1023 |
+| `trick`          | Herkende trick of `none`  |
+| `f1`             | FSR nose, 0-1023          |
+| `f2`             | FSR heel, 0-1023          |
+| `f3`             | FSR toe, 0-1023           |
+| `f4`             | FSR tail, 0-1023          |
 
 ## Testresultaten
 
@@ -402,24 +402,24 @@ Het prototype werd getest via PlatformIO Serial Monitor, Expo dev client en fiel
 
 ### Bench Tests
 
-| Test | Resultaat |
-| --- | --- |
-| Boot test | Status actief binnen 3 seconden |
-| BLE bereik | Stabiel tot ongeveer 8 meter in open ruimte |
-| Sample rate | 100 Hz gedurende 60 seconden |
-| Packet loss | Minder dan 2 procent |
-| Batterijstream | 6+ uur bevestigd met 2000 mAh LiPo |
-| FSR isolatie | Alle 4 sensoren onafhankelijk werkend |
-| Pitch/roll | Live zichtbaar in app |
+| Test           | Resultaat                                   |
+| -------------- | ------------------------------------------- |
+| Boot test      | Status actief binnen 3 seconden             |
+| BLE bereik     | Stabiel tot ongeveer 8 meter in open ruimte |
+| Sample rate    | 100 Hz gedurende 60 seconden                |
+| Packet loss    | Minder dan 2 procent                        |
+| Batterijstream | 6+ uur bevestigd met 2000 mAh LiPo          |
+| FSR isolatie   | Alle 4 sensoren onafhankelijk werkend       |
+| Pitch/roll     | Live zichtbaar in app                       |
 
 ### Gemeten waarden
 
-| Situatie | Waarde |
-| --- | --- |
-| Rust plat | AX ongeveer -4.38, AY ongeveer 0.40, AZ ongeveer 7.96 m/s^2 |
-| Gyro drift stil | Minder dan 0.5 deg/s |
-| FSR ruis los | Ongeveer 300 ADC, weggefilterd met threshold |
-| Live kanteling | Pitch -21.4 graden, roll 26.7 graden correct zichtbaar |
+| Situatie        | Waarde                                                      |
+| --------------- | ----------------------------------------------------------- |
+| Rust plat       | AX ongeveer -4.38, AY ongeveer 0.40, AZ ongeveer 7.96 m/s^2 |
+| Gyro drift stil | Minder dan 0.5 deg/s                                        |
+| FSR ruis los    | Ongeveer 300 ADC, weggefilterd met threshold                |
+| Live kanteling  | Pitch -21.4 graden, roll 26.7 graden correct zichtbaar      |
 
 ### Field Test
 
@@ -438,15 +438,15 @@ Getest:
 
 De fouten zijn belangrijk omdat ze bewijzen dat het prototype echt gebouwd, getest en verbeterd werd.
 
-| Fail | Oorzaak | Fix |
-| --- | --- | --- |
-| BLE werkte niet op batterij | AMS1117 kreeg te weinig VIN uit LiPo | MT3608 boost converter toegevoegd |
-| FSR cross-talk | Pull-downs naar SVP/GPIO36 in plaats van GND | Alle weerstanden naar GND verplaatst |
-| Alle FSR's lazen 0 | Losse 3.3V en koude lassen | Verbindingen opnieuw gesoldeerd |
-| MPU6050 viel weg bij trilling | I2C op 400 kHz te gevoelig op perfboard | `Wire.setClock(100000)` |
-| Boardnaam niet zichtbaar in BLE scan | Naam zat in scan response | Service UUID expliciet geadverteerd |
-| 3D viewer instabiel | expo-gl incompatibel met RN 0.81.5 | Stabiele Animated fallback |
-| Pitch/roll bleef 0.0 graden | Stale closure in BLE callback | Waarden direct uit sensorData berekend |
+| Fail                                 | Oorzaak                                      | Fix                                    |
+| ------------------------------------ | -------------------------------------------- | -------------------------------------- |
+| BLE werkte niet op batterij          | AMS1117 kreeg te weinig VIN uit LiPo         | MT3608 boost converter toegevoegd      |
+| FSR cross-talk                       | Pull-downs naar SVP/GPIO36 in plaats van GND | Alle weerstanden naar GND verplaatst   |
+| Alle FSR's lazen 0                   | Losse 3.3V en koude lassen                   | Verbindingen opnieuw gesoldeerd        |
+| MPU6050 viel weg bij trilling        | I2C op 400 kHz te gevoelig op perfboard      | `Wire.setClock(100000)`                |
+| Boardnaam niet zichtbaar in BLE scan | Naam zat in scan response                    | Service UUID expliciet geadverteerd    |
+| 3D viewer instabiel                  | expo-gl incompatibel met RN 0.81.5           | Stabiele Animated fallback             |
+| Pitch/roll bleef 0.0 graden          | Stale closure in BLE callback                | Waarden direct uit sensorData berekend |
 
 ## Markt En Doelgroep
 
@@ -462,11 +462,11 @@ Doelgroep:
 
 Personas uit het magazine:
 
-| Persona | Profiel | Waarom SK8Sense helpt |
-| --- | --- | --- |
-| Kobe, 16 | Beginner, skatet 6 maanden | Wil weten wat fout gaat bij tricks |
-| Lars, 22 | Intermediate, data-gedreven | Wil consistentie meten |
-| Elien, 28 | Skatecoach | Wil data over elke poging van leerlingen |
+| Persona   | Profiel                     | Waarom SK8Sense helpt                    |
+| --------- | --------------------------- | ---------------------------------------- |
+| Kobe, 16  | Beginner, skatet 6 maanden  | Wil weten wat fout gaat bij tricks       |
+| Lars, 22  | Intermediate, data-gedreven | Wil consistentie meten                   |
+| Elien, 28 | Skatecoach                  | Wil data over elke poging van leerlingen |
 
 ## Scope
 
@@ -518,14 +518,14 @@ Designprincipes:
 
 Belangrijke stijlkeuzes:
 
-| Element | Keuze |
-| --- | --- |
-| Achtergrond | Void black |
-| Accent | Signal orange |
-| Display font | Archivo |
-| Data labels | IBM Plex Mono |
-| Body text | Space Grotesk |
-| Componenten | Ticked panels, RegStrip, MotionAI, chips, stat grids |
+| Element      | Keuze                                                |
+| ------------ | ---------------------------------------------------- |
+| Achtergrond  | Void black                                           |
+| Accent       | Signal orange                                        |
+| Display font | Archivo                                              |
+| Data labels  | IBM Plex Mono                                        |
+| Body text    | Space Grotesk                                        |
+| Componenten  | Ticked panels, RegStrip, MotionAI, chips, stat grids |
 
 Design tokens:
 
@@ -538,28 +538,28 @@ docs/design/design-tokens-reference.js
 
 ### App
 
-| Onderdeel | Technologie |
-| --- | --- |
-| Framework | React Native |
-| Runtime | Expo SDK 54 |
-| Navigatie | React Navigation |
-| State | Zustand |
-| BLE | react-native-ble-plx |
-| Auth | Firebase Auth |
-| Database | Firestore |
-| AI | Anthropic Claude API |
-| Fonts | Archivo, IBM Plex Mono, Space Grotesk |
+| Onderdeel | Technologie                           |
+| --------- | ------------------------------------- |
+| Framework | React Native                          |
+| Runtime   | Expo SDK 54                           |
+| Navigatie | React Navigation                      |
+| State     | Zustand                               |
+| BLE       | react-native-ble-plx                  |
+| Auth      | Firebase Auth                         |
+| Database  | Firestore                             |
+| AI        | Anthropic Claude API                  |
+| Fonts     | Archivo, IBM Plex Mono, Space Grotesk |
 
 ### Firmware
 
-| Onderdeel | Technologie |
-| --- | --- |
-| Platform | ESP32 Arduino |
-| Build tool | PlatformIO |
-| BLE stack | NimBLE-Arduino |
-| JSON | ArduinoJson |
-| IMU library | MPU6050 |
-| Sensor bus | I2C op 100 kHz |
+| Onderdeel   | Technologie    |
+| ----------- | -------------- |
+| Platform    | ESP32 Arduino  |
+| Build tool  | PlatformIO     |
+| BLE stack   | NimBLE-Arduino |
+| JSON        | ArduinoJson    |
+| IMU library | MPU6050        |
+| Sensor bus  | I2C op 100 kHz |
 
 ## Projectstructuur
 
