@@ -16,8 +16,6 @@ import MainTabs from './navigation/MainTabs';
 import { BG, ACCENT } from './design-tokens';
 
 const Stack = createNativeStackNavigator();
-const ONBOARDING_KEY = 'sk8sense_onboarded';
-
 function LoadingScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: BG.base, justifyContent: 'center', alignItems: 'center' }}>
@@ -29,6 +27,7 @@ function LoadingScreen() {
 export default function App() {
   const { user, loading, init } = useAuthStore();
   const [hasOnboarded, setHasOnboarded] = useState(null);
+  const [onboardingLoading, setOnboardingLoading] = useState(false);
 
   const [fontsLoaded] = useFonts({
     Archivo_800ExtraBold,
@@ -40,32 +39,46 @@ export default function App() {
   });
 
   useEffect(() => {
-    const unsubscribeAuth = init();
-    AsyncStorage.getItem(ONBOARDING_KEY).then((val) => setHasOnboarded(!!val));
-    return unsubscribeAuth;
+    return init();
   }, []);
 
+  useEffect(() => {
+    console.log('AUTH STATE:', loading, user?.uid);
+    if (loading) return;
+    if (!user) {
+      setHasOnboarded(null);
+      setOnboardingLoading(false);
+      return;
+    }
+    setOnboardingLoading(true);
+    const key = `sk8sense_onboarded_${user.uid}`;
+    console.log('CHECKING KEY:', key);
+    AsyncStorage.getItem(key).then((val) => {
+      console.log('ONBOARDING VAL:', val);
+      setHasOnboarded(!!val);
+      setOnboardingLoading(false);
+    });
+  }, [user?.uid, loading]);
+
   const handleOnboardingComplete = async () => {
-    await AsyncStorage.setItem(ONBOARDING_KEY, '1');
+    await AsyncStorage.setItem(`sk8sense_onboarded_${user.uid}`, '1');
     setHasOnboarded(true);
   };
 
-  if (loading || hasOnboarded === null || !fontsLoaded) {
-    return <LoadingScreen />;
-  }
+  if (loading || onboardingLoading || !fontsLoaded) return <LoadingScreen />;
 
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!hasOnboarded ? (
-          <Stack.Screen name="Onboarding">
-            {(props) => <OnboardingScreen {...props} onComplete={handleOnboardingComplete} />}
-          </Stack.Screen>
-        ) : !user ? (
+        {!user ? (
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
           </>
+        ) : !hasOnboarded ? (
+          <Stack.Screen name="Onboarding">
+            {(props) => <OnboardingScreen {...props} onComplete={handleOnboardingComplete} />}
+          </Stack.Screen>
         ) : (
           <Stack.Screen name="MainTabs" component={MainTabs} />
         )}

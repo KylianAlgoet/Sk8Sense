@@ -131,18 +131,19 @@ void loop() {
     int16_t rawAx, rawAy, rawAz, rawGx, rawGy, rawGz;
     mpu.getMotion6(&rawAx, &rawAy, &rawAz, &rawGx, &rawGy, &rawGz);
 
-    ax = (rawAx / 4096.0f) * 9.81f;
+    // Sensor mounted rotated 90°: swap ax/az so az = gravity when board is flat
+    az = (rawAx / 4096.0f) * 9.81f;
     ay = (rawAy / 4096.0f) * 9.81f;
-    az = (rawAz / 4096.0f) * 9.81f;
-    gx = rawGx / 65.5f;
+    ax = -1.0f * (rawAz / 4096.0f) * 9.81f;
+    gz = rawGx / 65.5f;
     gy = rawGy / 65.5f;
-    gz = rawGz / 65.5f;
+    gx = -1.0f * (rawGz / 65.5f);
 
     // Read FSRs (12-bit ADC, scale to 0-1023 for compact JSON)
-    int f1 = analogRead(FSR_NOSE) >> 2;   // nose
-    int f2 = analogRead(FSR_HEEL) >> 2;   // heel
-    int f3 = analogRead(FSR_TOE)  >> 2;   // toe
-    int f4 = analogRead(FSR_TAIL) >> 2;   // tail
+    int f1 = analogRead(FSR_NOSE) >> 2;
+    int f2 = analogRead(FSR_HEEL) >> 2;
+    int f3 = analogRead(FSR_TOE)  >> 2;
+    int f4 = analogRead(FSR_TAIL) >> 2;
 
     detectTrick(ax, ay, az, gx, gy);
 
@@ -166,6 +167,14 @@ void loop() {
     pCharacteristic->setValue((uint8_t*)buf, strlen(buf));
     if (NimBLEDevice::getServer()->getConnectedCount() > 0) {
         pCharacteristic->notify();
+    }
+
+    // Print sensor data every 500ms
+    static unsigned long lastPrint = 0;
+    if (millis() - lastPrint >= 500) {
+        lastPrint = millis();
+        Serial.printf("ax=%.1f ay=%.1f az=%.1f | gx=%.1f gy=%.1f gz=%.1f | f1=%d f2=%d f3=%d f4=%d | trick=%s\n",
+            ax, ay, az, gx, gy, gz, f1, f2, f3, f4, trick.c_str());
     }
 
     delay(10); // 100Hz

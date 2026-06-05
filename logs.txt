@@ -1,0 +1,16 @@
+﻿--------- beginning of main
+06-04 21:13:21.963 29603  3650 I ReactNativeJS: Running "main" with {"rootTag":31}
+06-04 21:13:22.218 29603  3650 W ReactNativeJS: The app is running using the Legacy Architecture. The Legacy Architecture is deprecated and will be removed in a future version of React Native. Please consider migrating to the New Architecture. For more information, please see https://reactnative.dev/blog/2024/10/23/the-new-architecture-is-here
+06-04 21:14:35.257 29603  3650 W ReactNativeJS: Cannot connect to Metro.
+06-04 21:14:35.257 29603  3650 W ReactNativeJS: 
+06-04 21:14:35.257 29603  3650 W ReactNativeJS: Try the following to fix the issue:
+06-04 21:14:35.257 29603  3650 W ReactNativeJS: - Ensure that Metro is running and available on the same network
+06-04 21:14:35.257 29603  3650 W ReactNativeJS: - Ensure that your device/emulator is connected to your machine and has USB debugging enabled - run 'adb devices' to see a list of connected devices
+06-04 21:14:35.257 29603  3650 W ReactNativeJS: - If you're on a physical device connected to the same machine, run 'adb reverse tcp:8081 tcp:8081' to forward requests from your device
+06-04 21:14:35.257 29603  3650 W ReactNativeJS: - If your device is on the same Wi-Fi network, set 'Debug server host & port for device' in 'Dev settings' to your machine's IP address and the port of the local dev server - e.g. 10.0.1.1:8081
+06-04 21:14:35.257 29603  3650 W ReactNativeJS: 
+06-04 21:14:35.257 29603  3650 W ReactNativeJS: URL: 192.168.129.60:8081
+06-04 21:14:35.257 29603  3650 W ReactNativeJS: 
+06-04 21:14:35.257 29603  3650 W ReactNativeJS: Error: undefined
+06-04 21:17:13.073 31138  4719 I ReactNativeJS: Running "main" with {"rootTag":11}
+06-04 21:17:13.327 31138  4719 W ReactNativeJS: The app is running using the Legacy Architecture. The Legacy Architecture is deprecated and will be removed in a future version of React Native. Please consider migrating to the New Architecture. For more information, please see https://reactnative.dev/blog/2024/10/23/the-new-architecture-is-here
