@@ -21,6 +21,18 @@ const TRICK_SEQUENCES = {
     { ms: 350,  ax: 0,   ay: 0,   az: 0.1,  gx: -420, gy: 0,   gz: 0,    trick: 'heelflip'},
     { ms: 150,  ax: 0,   ay: 0,   az: 20.0, gx: 0,    gy: 0,   gz: 0,    trick: 'heelflip'},
   ],
+  bs_shuv: [
+    { ms: 100,  ax: 0,   ay: 0,   az: 6.0,  gx: 0,    gy: 0,   gz: 200,  trick: 'none'    },
+    { ms: 50,   ax: 0,   ay: 0,   az: 18.0, gx: 0,    gy: 0,   gz: 800,  trick: 'none'    },
+    { ms: 350,  ax: 0,   ay: 0,   az: 0.1,  gx: 0,    gy: 380, gz: 0,    trick: 'bs_shuv' },
+    { ms: 150,  ax: 0,   ay: 0,   az: 20.0, gx: 0,    gy: 0,   gz: 0,    trick: 'bs_shuv' },
+  ],
+  fs_shuv: [
+    { ms: 100,  ax: 0,   ay: 0,   az: 6.0,  gx: 0,    gy: 0,   gz: 200,  trick: 'none'    },
+    { ms: 50,   ax: 0,   ay: 0,   az: 18.0, gx: 0,    gy: 0,   gz: 800,  trick: 'none'    },
+    { ms: 350,  ax: 0,   ay: 0,   az: 0.1,  gx: 0,    gy: -380, gz: 0,   trick: 'fs_shuv' },
+    { ms: 150,  ax: 0,   ay: 0,   az: 20.0, gx: 0,    gy: 0,   gz: 0,    trick: 'fs_shuv' },
+  ],
 };
 
 const TRICK_NAMES = Object.keys(TRICK_SEQUENCES);
@@ -30,6 +42,9 @@ function noise(range) {
 }
 
 function makeFrame(phase) {
+  // Tail FSR (f4) spikes during the pop phase (the loud az transient before liftoff),
+  // mirrors what the real board reads when the rider loads the tail to pop.
+  const isPop = Math.abs(phase.az - 18.0) < 0.5;
   return {
     ax: +(phase.ax + noise(0.1)).toFixed(2),
     ay: +(phase.ay + noise(0.1)).toFixed(2),
@@ -38,6 +53,10 @@ function makeFrame(phase) {
     gy: +(phase.gy + noise(5)).toFixed(2),
     gz: +(phase.gz + noise(8)).toFixed(2),
     trick: phase.trick,
+    f1: phase.trick === 'none' && !isPop ? 1200 + noise(150) : 200 + noise(80),
+    f2: phase.trick === 'none' && !isPop ? 1100 + noise(150) : 180 + noise(80),
+    f3: 150 + noise(60),
+    f4: isPop ? 2400 + noise(300) : 150 + noise(60),
   };
 }
 
@@ -76,7 +95,8 @@ export function startMockSensor(onData) {
         const t = setTimeout(() => {
           if (cancelled) return;
           const intervalId = tick(10, phase);
-          setTimeout(() => clearInterval(intervalId), phase.ms - 5);
+          const stopPhase = setTimeout(() => clearInterval(intervalId), phase.ms - 5);
+          timers.push(stopPhase);
         }, delay);
         timers.push(t);
         delay += phase.ms;

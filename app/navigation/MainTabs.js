@@ -48,6 +48,7 @@ function ProfileNavigator() {
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
       <ProfileStack.Screen name="History" component={HistoryScreen} />
+      <ProfileStack.Screen name="SessionSummary" component={SessionSummaryScreen} />
     </ProfileStack.Navigator>
   );
 }

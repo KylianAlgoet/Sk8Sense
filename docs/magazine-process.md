@@ -615,11 +615,12 @@ const firebaseConfig = {
 ```
 
 ### Anthropic API key
-Maak `config/ai.js` aan (is gitignored):
-```js
-export const ANTHROPIC_API_KEY = 'sk-ant-api03-...';
-export const AI_MODEL = 'claude-haiku-4-5-20251001';
+Zet de key lokaal in `app/.env.local` (is gitignored):
+```env
+EXPO_PUBLIC_ANTHROPIC_API_KEY=your_anthropic_key_here
 ```
+
+De app leest die waarde via `process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY`.
 
 ## Afhankelijkheden updaten
 ```bash

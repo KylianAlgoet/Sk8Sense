@@ -28,9 +28,11 @@ function StepCard({ step, index }) {
 
 export default function TrickIntroScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { currentTrick } = useTrickStore();
+  const { currentTrick, tricks, resetPracticeSession } = useTrickStore();
 
   if (!currentTrick) return null;
+
+  const trickIndex = tricks.findIndex(t => t.id === currentTrick.id);
 
   const detectable = ['ollie', 'kickflip', 'heelflip', 'pop_shuvit'].includes(currentTrick.id);
 
@@ -53,7 +55,7 @@ export default function TrickIntroScreen({ navigation }) {
         <View style={s.titleBlock}>
           <View style={s.titleTickTL} /><View style={s.titleTickBR} />
           <View style={s.titleTop}>
-            <Text style={s.trickCode}>T.{String(currentTrick.id === 'ollie' ? 1 : currentTrick.id === 'kickflip' ? 2 : 3).padStart(2, '0')}</Text>
+            <Text style={s.trickCode}>T.{String(trickIndex + 1).padStart(2, '0')}</Text>
             <View style={[s.diffBadge, { borderColor: `${currentTrick.color}55`, backgroundColor: `${currentTrick.color}14` }]}>
               <Text style={[s.diffText, { color: currentTrick.color }]}>{DIFFICULTIES[currentTrick.difficulty]}</Text>
             </View>
@@ -79,7 +81,10 @@ export default function TrickIntroScreen({ navigation }) {
 
       {/* CTA */}
       <View style={[s.ctaWrap, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        <TouchableOpacity style={s.ctaBtn} onPress={() => navigation.navigate('Practice')} activeOpacity={0.85}>
+        <TouchableOpacity style={s.ctaBtn} onPress={() => {
+          resetPracticeSession();
+          navigation.navigate('Practice');
+        }} activeOpacity={0.85}>
           <Text style={s.ctaBtnText}>START PRACTICE →</Text>
         </TouchableOpacity>
       </View>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, LogBox } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -9,6 +9,7 @@ import { IBMPlexMono_400Regular, IBMPlexMono_500Medium } from '@expo-google-font
 import { SpaceGrotesk_400Regular, SpaceGrotesk_500Medium, SpaceGrotesk_600SemiBold } from '@expo-google-fonts/space-grotesk';
 
 import useAuthStore from './store/authStore';
+import useSessionStore from './store/sessionStore';
 import OnboardingScreen from './screens/OnboardingScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
@@ -16,6 +17,12 @@ import MainTabs from './navigation/MainTabs';
 import { BG, ACCENT } from './design-tokens';
 
 const Stack = createNativeStackNavigator();
+
+LogBox.ignoreLogs([
+  'Could not reach Cloud Firestore backend',
+  '@firebase/firestore',
+]);
+
 function LoadingScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: BG.base, justifyContent: 'center', alignItems: 'center' }}>
@@ -26,6 +33,7 @@ function LoadingScreen() {
 
 export default function App() {
   const { user, loading, init } = useAuthStore();
+  const loadSessions = useSessionStore((s) => s.loadSessions);
   const [hasOnboarded, setHasOnboarded] = useState(null);
   const [onboardingLoading, setOnboardingLoading] = useState(false);
 
@@ -42,8 +50,14 @@ export default function App() {
     return init();
   }, []);
 
+  // Load the rider's session history as soon as they're authenticated — previously
+  // this only happened on mounting Profile/History, so Home showed all-zero stats
+  // (readiness, detections, sessions) until the user navigated there once.
   useEffect(() => {
-    console.log('AUTH STATE:', loading, user?.uid);
+    if (user) loadSessions();
+  }, [user?.uid]);
+
+  useEffect(() => {
     if (loading) return;
     if (!user) {
       setHasOnboarded(null);
@@ -52,9 +66,7 @@ export default function App() {
     }
     setOnboardingLoading(true);
     const key = `sk8sense_onboarded_${user.uid}`;
-    console.log('CHECKING KEY:', key);
     AsyncStorage.getItem(key).then((val) => {
-      console.log('ONBOARDING VAL:', val);
       setHasOnboarded(!!val);
       setOnboardingLoading(false);
     });

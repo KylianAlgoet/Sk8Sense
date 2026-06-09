@@ -12,7 +12,7 @@ const FEATURED = [
     diffColor: '#4CAF50',
     category: 'FLATGROUND',
     code: 'T.01',
-    steps: 5,
+    steps: 3,
     description: 'The foundation. Master this first — everything else builds on it.',
   },
   {
@@ -22,7 +22,7 @@ const FEATURED = [
     diffColor: ACCENT,
     category: 'FLATGROUND',
     code: 'T.02',
-    steps: 5,
+    steps: 3,
     description: 'Flick off the pocket and keep your shoulders level.',
   },
   {
@@ -32,13 +32,22 @@ const FEATURED = [
     diffColor: '#FFB020',
     category: 'FLATGROUND',
     code: 'T.03',
-    steps: 5,
+    steps: 3,
     description: 'Scoop the tail and let the board rotate under you.',
+  },
+  {
+    id: 'heelflip',
+    name: 'HEELFLIP',
+    difficulty: 'INTERMEDIATE',
+    diffColor: '#FF9800',
+    category: 'FLATGROUND',
+    code: 'T.04',
+    steps: 3,
+    description: 'Same pop rhythm as a kickflip, but the flick comes off the heel edge.',
   },
 ];
 
 const COMING_SOON = [
-  { code: 'T.04', name: 'HEELFLIP' },
   { code: 'T.05', name: 'FS 180' },
   { code: 'T.06', name: 'BS 180' },
   { code: 'T.07', name: 'FS SHUV-IT' },
@@ -69,7 +78,7 @@ export default function LearningScreen({ navigation }) {
           <V3Chip label="MVP" variant="live" />
         </View>
 
-        <V3SectionHead num="/03" label="AVAILABLE NOW" right="3 TRICKS" />
+        <V3SectionHead num="/04" label="AVAILABLE NOW" right="4 TRICKS" />
 
         {FEATURED.map((trick) => (
           <TouchableOpacity key={trick.id} style={s.card} onPress={() => handleSelect(trick)} activeOpacity={0.8}>
@@ -109,8 +118,8 @@ export default function LearningScreen({ navigation }) {
         <View style={s.csBanner}>
           <View style={s.csDiamond} />
           <View style={{ flex: 1 }}>
-            <Text style={s.csBannerLabel}>MOTION AI · ROADMAP</Text>
-            <Text style={s.csBannerText}>Heelflips and shove-its are next. More tricks unlock as detection improves.</Text>
+            <Text style={s.csBannerLabel}>SK8SENSE AI COACH · ROADMAP</Text>
+            <Text style={s.csBannerText}>More rotation tricks unlock as detection improves.</Text>
           </View>
         </View>
 

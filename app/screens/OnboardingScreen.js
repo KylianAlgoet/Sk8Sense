@@ -1,26 +1,33 @@
 import { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { BG, TEXT, LINE, ACCENT, FONT, R, BTN, SPACE } from '../design-tokens';
+import { V3Grid, V3Ticked } from '../components/V3Shared';
 
 const { width } = Dimensions.get('window');
 
 const SLIDES = [
   {
-    emoji: '🛹',
+    icon: 'rocket-outline',
+    tag: 'WELCOME',
     title: 'Welcome to SK8Sense',
     body: 'The first AI-powered skateboard coach. Mount the sensor on your board and let it do the work.',
   },
   {
-    emoji: '📡',
+    icon: 'bluetooth-outline',
+    tag: 'CONNECTIVITY',
     title: 'Wireless & Real-Time',
     body: 'The ESP32 sensor connects via Bluetooth and streams live data to your phone at 100 times per second.',
   },
   {
-    emoji: '🤖',
+    icon: 'analytics-outline',
+    tag: 'SK8SENSE AI COACH',
     title: 'AI Trick Detection',
     body: 'SK8Sense detects your tricks automatically — ollie, kickflip, heelflip — and gives you a coaching tip after every attempt.',
   },
   {
-    emoji: '📊',
+    icon: 'trending-up-outline',
+    tag: 'PROGRESS',
     title: 'Track Your Progress',
     body: 'Every session is saved. See your trick count, session duration and history over time.',
   },
@@ -49,61 +56,72 @@ export default function OnboardingScreen({ onComplete }) {
   const isLast = index === SLIDES.length - 1;
 
   return (
-    <View style={styles.container}>
+    <View style={s.container}>
+      <V3Grid />
+
       {/* Skip */}
-      <TouchableOpacity style={styles.skip} onPress={onComplete}>
-        <Text style={styles.skipText}>Skip</Text>
+      <TouchableOpacity style={s.skip} onPress={onComplete}>
+        <Text style={s.skipText}>SKIP</Text>
       </TouchableOpacity>
 
       {/* Content */}
-      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-        <Text style={styles.emoji}>{slide.emoji}</Text>
-        <Text style={styles.title}>{slide.title}</Text>
-        <Text style={styles.body}>{slide.body}</Text>
+      <Animated.View style={[s.contentWrap, { opacity: fadeAnim }]}>
+        <V3Ticked style={s.card}>
+          <View style={s.iconWrap}>
+            <Ionicons name={slide.icon} size={30} color={ACCENT} />
+          </View>
+          <Text style={s.tag}>· {slide.tag} ·</Text>
+          <Text style={s.title}>{slide.title}</Text>
+          <Text style={s.body}>{slide.body}</Text>
+        </V3Ticked>
       </Animated.View>
 
       {/* Dots */}
-      <View style={styles.dots}>
+      <View style={s.dots}>
         {SLIDES.map((_, i) => (
-          <View key={i} style={[styles.dot, i === index && styles.dotActive]} />
+          <View key={i} style={[s.dot, i === index && s.dotActive]} />
         ))}
       </View>
 
       {/* Button */}
-      <TouchableOpacity style={styles.btn} onPress={next}>
-        <Text style={styles.btnText}>{isLast ? "LET'S SKATE" : 'NEXT'}</Text>
+      <TouchableOpacity style={s.btn} onPress={next} activeOpacity={0.85}>
+        <Text style={s.btnText}>{isLast ? "LET'S SKATE" : 'NEXT'}</Text>
+        <Ionicons name="arrow-forward" size={15} color="#0A0A0B" />
       </TouchableOpacity>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   container: {
-    flex: 1, backgroundColor: '#1a1a2e',
+    flex: 1, backgroundColor: BG.base,
     alignItems: 'center', justifyContent: 'center',
-    padding: 32,
+    padding: SPACE.xl,
   },
-  skip: { position: 'absolute', top: 56, right: 24 },
-  skipText: { color: '#555', fontSize: 14 },
+  skip: { position: 'absolute', top: 60, right: 24, zIndex: 10 },
+  skipText: { fontFamily: FONT.mono, fontSize: 10, letterSpacing: 1.6, color: TEXT.t3 },
 
-  content: { alignItems: 'center', marginBottom: 48 },
-  emoji: { fontSize: 72, marginBottom: 24 },
+  contentWrap: { width: '100%', alignItems: 'center', marginBottom: 40 },
+  card: { width: '100%', maxWidth: width * 0.86, padding: 24, alignItems: 'center', gap: 14 },
+  iconWrap: {
+    width: 60, height: 60, borderRadius: R,
+    backgroundColor: `${ACCENT}14`, borderWidth: 1, borderColor: `${ACCENT}38`,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+  },
+  tag: { fontFamily: FONT.mono, fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: ACCENT },
   title: {
-    color: '#e94560', fontSize: 26, fontWeight: 'bold',
-    textAlign: 'center', marginBottom: 16,
+    fontFamily: FONT.display, fontSize: 22, color: TEXT.t1,
+    textTransform: 'uppercase', letterSpacing: -0.4, textAlign: 'center',
   },
   body: {
-    color: '#aaa', fontSize: 16, textAlign: 'center',
-    lineHeight: 24, maxWidth: width * 0.8,
+    fontFamily: FONT.body, fontSize: 14, color: TEXT.t2,
+    textAlign: 'center', lineHeight: 21,
   },
 
-  dots: { flexDirection: 'row', gap: 8, marginBottom: 32 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#333' },
-  dotActive: { backgroundColor: '#e94560', width: 24 },
+  dots: { flexDirection: 'row', gap: 8, marginBottom: 28 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: BG.b4, borderWidth: 1, borderColor: LINE.dim },
+  dotActive: { backgroundColor: ACCENT, borderColor: ACCENT, width: 24 },
 
-  btn: {
-    backgroundColor: '#e94560', width: '100%',
-    paddingVertical: 16, borderRadius: 10, alignItems: 'center',
-  },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: 'bold', letterSpacing: 1 },
+  btn: { ...BTN.base, ...BTN.primary, width: '100%', shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, elevation: 6 },
+  btnText: { fontFamily: FONT.display, fontSize: 13, letterSpacing: 1, textTransform: 'uppercase', color: '#0A0A0B' },
 });

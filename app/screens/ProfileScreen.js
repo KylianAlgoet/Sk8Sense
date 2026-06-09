@@ -5,7 +5,18 @@ import useAuthStore from '../store/authStore';
 import useSessionStore from '../store/sessionStore';
 import T, { BG, TEXT, LINE, ACCENT, PANEL, BTN, FONT, SPACE, R } from '../design-tokens';
 
-const TRICK_COLORS = { ollie:'#4CAF50', kickflip:'#2196F3', heelflip:'#FF9800' };
+const TRICK_COLORS = { ollie:'#4CAF50', kickflip:'#2196F3', heelflip:'#FF9800', pop_shuvit: ACCENT, bs_shuv: ACCENT, fs_shuv: ACCENT };
+
+function normalizeTrick(trick) {
+  if (trick === 'bs_shuv' || trick === 'fs_shuv') return 'pop_shuvit';
+  return trick;
+}
+
+function trickLabel(trick) {
+  const normalized = normalizeTrick(trick);
+  if (normalized === 'pop_shuvit') return 'POP SHUVIT';
+  return normalized.toUpperCase();
+}
 
 function StatCard({ value, label, icon, color = ACCENT }) {
   return (
@@ -54,7 +65,8 @@ export default function ProfileScreen({ navigation }) {
   const bestSession  = sessions.reduce((best, s) => (!best || s.tricks.length > best.tricks.length) ? s : best, null);
 
   const trickCounts = sessions.flatMap(s => s.tricks).reduce((acc, { trick }) => {
-    acc[trick] = (acc[trick] || 0) + 1; return acc;
+    const normalized = normalizeTrick(trick);
+    acc[normalized] = (acc[normalized] || 0) + 1; return acc;
   }, {});
   const maxTrickCount = Math.max(...Object.values(trickCounts), 1);
   const initials = user?.displayName ? user.displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2) : '?';
@@ -82,32 +94,42 @@ export default function ProfileScreen({ navigation }) {
         <Text style={s.email}>{user?.email}</Text>
       </View>
 
-      {/* Stats grid */}
-      <View style={s.statsGrid}>
-        <StatCard value={sessions.length} label="Sessions" icon="calendar-outline" color={ACCENT} />
-        <StatCard value={totalTricks} label="Tricks" icon="flash-outline" color={T.AMBER} />
-        <StatCard value={`${totalMinutes}m`} label="On board" icon="timer-outline" color="#4CAF50" />
-        <StatCard value={bestSession ? bestSession.tricks.length : 0} label="Best session" icon="trophy-outline" color="#FF9800" />
-      </View>
-
-      {/* Sessions chart */}
-      <SessionChart sessions={sessions} />
-
-      {/* Trick breakdown */}
-      {Object.keys(trickCounts).length > 0 && (
-        <View style={s.trickCard}>
-          <Text style={s.sectionTitle}>ALL-TIME TRICKS</Text>
-          {Object.entries(trickCounts).sort((a,b) => b[1]-a[1]).map(([trick, count]) => (
-            <View key={trick} style={s.trickRow}>
-              <View style={[s.trickDot, { backgroundColor: TRICK_COLORS[trick] || ACCENT }]} />
-              <Text style={s.trickName}>{trick.toUpperCase()}</Text>
-              <View style={s.trickBarWrap}>
-                <View style={[s.trickBar, { width:`${(count/maxTrickCount)*100}%`, backgroundColor: TRICK_COLORS[trick] || ACCENT }]} />
-              </View>
-              <Text style={s.trickCount}>×{count}</Text>
-            </View>
-          ))}
+      {/* Stats — or a first-run nudge when there's no session data yet */}
+      {sessions.length === 0 ? (
+        <View style={s.emptyWrap}>
+          <Ionicons name="person-circle-outline" size={32} color={TEXT.t3} />
+          <Text style={s.emptyTitle}>No sessions yet</Text>
+          <Text style={s.emptyText}>Connect your board and ride your first session — your stats, charts and trick breakdown will show up here.</Text>
         </View>
+      ) : (
+        <>
+          <View style={s.statsGrid}>
+            <StatCard value={sessions.length} label="Sessions" icon="calendar-outline" color={ACCENT} />
+            <StatCard value={totalTricks} label="Tricks" icon="flash-outline" color={T.AMBER} />
+            <StatCard value={`${totalMinutes}m`} label="On board" icon="timer-outline" color="#4CAF50" />
+            <StatCard value={bestSession ? bestSession.tricks.length : 0} label="Best session" icon="trophy-outline" color="#FF9800" />
+          </View>
+
+          {/* Sessions chart */}
+          <SessionChart sessions={sessions} />
+
+          {/* Trick breakdown */}
+          {Object.keys(trickCounts).length > 0 && (
+            <View style={s.trickCard}>
+              <Text style={s.sectionTitle}>ALL-TIME TRICKS</Text>
+              {Object.entries(trickCounts).sort((a,b) => b[1]-a[1]).map(([trick, count]) => (
+                <View key={trick} style={s.trickRow}>
+                  <View style={[s.trickDot, { backgroundColor: TRICK_COLORS[normalizeTrick(trick)] || ACCENT }]} />
+                  <Text style={s.trickName}>{trickLabel(trick)}</Text>
+                  <View style={s.trickBarWrap}>
+                    <View style={[s.trickBar, { width:`${(count/maxTrickCount)*100}%`, backgroundColor: TRICK_COLORS[normalizeTrick(trick)] || ACCENT }]} />
+                  </View>
+                  <Text style={s.trickCount}>×{count}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </>
       )}
 
       {/* Sign out */}
@@ -136,6 +158,10 @@ const s = StyleSheet.create({
   name: { color:TEXT.t1, fontSize:20, fontFamily:FONT.display, textTransform:'uppercase', letterSpacing:-0.3 },
   email: { color:TEXT.t3, fontSize:13, fontFamily:FONT.body },
 
+  emptyWrap: { ...PANEL.base, alignItems:'center', padding:24, gap:10 },
+  emptyTitle: { fontFamily:FONT.bodySb, fontSize:14, color:TEXT.t1 },
+  emptyText: { fontFamily:FONT.body, fontSize:12, color:TEXT.t3, textAlign:'center', lineHeight:18, maxWidth:260 },
+
   statsGrid: { flexDirection:'row', flexWrap:'wrap', gap:10 },
   statCard: { flex:1, minWidth:'44%', ...PANEL.base, padding:SPACE.md, alignItems:'center', gap:4 },
   statVal: { fontSize:22, fontFamily:FONT.display, letterSpacing:-0.5 },
@@ -152,7 +178,7 @@ const s = StyleSheet.create({
   sectionTitle: { color:TEXT.t3, fontSize:10, fontFamily:FONT.mono, letterSpacing:2, textTransform:'uppercase', marginBottom:12 },
   trickRow: { flexDirection:'row', alignItems:'center', marginBottom:12, gap:10 },
   trickDot: { width:8, height:8, borderRadius:4 },
-  trickName: { color:TEXT.t1, fontSize:12, fontFamily:FONT.bodySb, width:65, textTransform:'uppercase' },
+  trickName: { color:TEXT.t1, fontSize:11, fontFamily:FONT.bodySb, width:82, textTransform:'uppercase' },
   trickBarWrap: { flex:1, height:6, backgroundColor:BG.b4, borderRadius:3, overflow:'hidden' },
   trickBar: { height:'100%', borderRadius:3 },
   trickCount: { color:TEXT.t2, fontSize:12, fontFamily:FONT.mono, width:32, textAlign:'right' },

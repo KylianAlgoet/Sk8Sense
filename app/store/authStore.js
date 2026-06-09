@@ -7,9 +7,19 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../config/firebase';
 
-const useAuthStore = create((set) => ({
+export const DEMO_USER = {
+  uid: 'demo-user',
+  email: 'demo@sk8sense.local',
+  displayName: 'Demo',
+  isDemo: true,
+};
+
+const isDemoLogin = (email, password) => email.trim().toLowerCase() === 'demo' && password === '123456';
+
+const useAuthStore = create((set, get) => ({
   user: null,
   loading: true,
   error: null,
@@ -32,11 +42,19 @@ const useAuthStore = create((set) => ({
   },
 
   login: async (email, password) => {
+    if (isDemoLogin(email, password)) {
+      await AsyncStorage.removeItem(`sk8sense_onboarded_${DEMO_USER.uid}`);
+      set({ user: DEMO_USER, loading: false, error: null });
+      return;
+    }
     await signInWithEmailAndPassword(auth, email, password);
   },
 
   logout: async () => {
-    await signOut(auth);
+    const user = get().user;
+    if (user?.uid) await AsyncStorage.removeItem(`sk8sense_onboarded_${user.uid}`);
+    set({ user: null, error: null });
+    if (auth.currentUser) await signOut(auth);
   },
 
   setError: (error) => set({ error }),

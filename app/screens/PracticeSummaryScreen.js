@@ -1,14 +1,15 @@
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useTrickStore from '../store/trickStore';
-
-const TRICK_ORDER = ['ollie', 'kickflip', 'heelflip'];
+import { BG, TEXT, LINE, ACCENT, FONT, R, BAR } from '../design-tokens';
+import { V3Grid, V3StatGrid, V3SectionHead } from '../components/V3Shared';
 
 const NEXT_SESSION_TIPS = {
-  ollie:    'Next time: focus on making the pop louder — height follows sound.',
-  kickflip: 'Next time: flick off the corner of the board, not the flat part.',
-  heelflip: 'Next time: kick your heel further forward, not just to the side.',
+  ollie:      'Next time: focus on making the pop louder — height follows sound.',
+  kickflip:   'Next time: finish the flip before you catch it — the board only came halfway around.',
+  heelflip:   'Next time: kick your heel further forward, not just to the side.',
+  pop_shuvit: 'Next time: scoop back AND off the tail in one motion — not two.',
 };
 
 function formatTime(s) {
@@ -28,137 +29,122 @@ export default function PracticeSummaryScreen({ navigation, route }) {
 
   const { duration, total, landed } = result;
   const pct = total > 0 ? Math.round((landed / total) * 100) : 0;
-  const xp = landed * 10;
+  const missed = Math.max(total - landed, 0);
+  const consistencyLabel = pct >= 90 ? 'LOCKED IN' : pct >= 70 ? 'BUILDING' : 'NEEDS REPS';
 
-  // Unlock next trick if >= 70%
-  const currentIdx = TRICK_ORDER.indexOf(trickId);
-  const nextTrick = pct >= 70 && currentIdx < TRICK_ORDER.length - 1
-    ? tricks.find((t) => t.id === TRICK_ORDER[currentIdx + 1])
-    : null;
+  const stats = [
+    { value: formatTime(duration), label: 'DURATION' },
+    { value: total, label: 'ATTEMPTS' },
+    { value: landed, label: 'LANDED', hot: true },
+  ];
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
+    <View style={[s.container, { paddingTop: insets.top }]}>
+      <V3Grid />
+      <StatusBar barStyle="light-content" backgroundColor={BG.base} />
 
-      <View style={styles.header}>
-        <Text style={styles.label}>SESSION COMPLETE</Text>
-        <Text style={[styles.trickName, { color: trick.color }]}>{trick.name}</Text>
+      {/* Header */}
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => navigation.navigate('TrickList')} style={s.backBtn}>
+          <Ionicons name="arrow-back" size={20} color={TEXT.t2} />
+        </TouchableOpacity>
+        <Text style={s.headerLabel}>/ PRACTICE · SUMMARY</Text>
       </View>
 
-      {/* Stats */}
-      <View style={styles.statsRow}>
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>{formatTime(duration)}</Text>
-          <Text style={styles.statLabel}>Duration</Text>
+      <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+        {/* Title */}
+        <View style={s.titleBlock}>
+          <View style={s.titleTickTL} /><View style={s.titleTickBR} />
+          <Text style={[s.sessionLabel, { color: trick.color }]}>· SESSION COMPLETE ·</Text>
+          <Text style={s.title}>{trick.name.toUpperCase()}</Text>
         </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>{total}</Text>
-          <Text style={styles.statLabel}>Attempts</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={[styles.statValue, { color: trick.color }]}>{landed}</Text>
-          <Text style={styles.statLabel}>Landed</Text>
-        </View>
-      </View>
 
-      {/* Success rate */}
-      <View style={styles.section}>
-        <View style={styles.rateHeader}>
-          <Text style={styles.sectionLabel}>SUCCESS RATE</Text>
-          <Text style={[styles.rateValue, { color: trick.color }]}>{pct}%</Text>
+        {/* Stats */}
+        <V3StatGrid stats={stats} />
+
+        <View style={{ height: 22 }} />
+
+        {/* Success rate */}
+        <V3SectionHead num="/01" label="SUCCESS RATE" right={`${pct}%`} />
+        <View style={s.rateCard}>
+          <View style={[BAR.track, BAR.trackLg]}>
+            <View style={[BAR.fill, { width: `${pct}%`, backgroundColor: trick.color }]} />
+          </View>
+          <Text style={s.rateText}>{landed} clean landings from {total} recorded attempts.</Text>
         </View>
-        <View style={styles.progressBg}>
-          <View style={[styles.progressFill, { width: `${pct}%`, backgroundColor: trick.color }]} />
+
+        <View style={{ height: 22 }} />
+
+        {/* Session data */}
+        <V3SectionHead num="/02" label="SESSION DATA" />
+        <View style={s.dataCard}>
+          <View style={s.dataRow}>
+            <Text style={s.dataLabel}>Consistency</Text>
+            <Text style={[s.dataValue, { color: trick.color }]}>{consistencyLabel}</Text>
+          </View>
+          <View style={s.dataRow}>
+            <Text style={s.dataLabel}>Clean reps</Text>
+            <Text style={s.dataValue}>{landed}/{total}</Text>
+          </View>
+          <View style={s.dataRow}>
+            <Text style={s.dataLabel}>Retries</Text>
+            <Text style={s.dataValue}>{missed}</Text>
+          </View>
         </View>
-      </View>
 
-      {/* XP */}
-      <View style={styles.xpRow}>
-        <Ionicons name="flash" size={16} color="#d4ff3d" />
-        <Text style={styles.xpText}>+{xp} XP earned</Text>
-        {pct === 100 && <Text style={styles.xpBonus}> +50 BONUS</Text>}
-      </View>
+        <View style={{ height: 22 }} />
 
-      {/* Unlock message */}
-      {nextTrick && (
-        <View style={[styles.unlockCard, { borderColor: nextTrick.color + '44' }]}>
-          <Ionicons name="lock-open-outline" size={16} color={nextTrick.color} />
-          <Text style={[styles.unlockText, { color: nextTrick.color }]}>
-            {nextTrick.name} unlocked — you're ready for the next step.
-          </Text>
+        {/* Next session tip */}
+        <V3SectionHead num="/03" label="SK8SENSE AI COACH" />
+        <View style={s.tipCard}>
+          <View style={s.tipDiamond} />
+          <Text style={s.tipText}>{NEXT_SESSION_TIPS[trickId]}</Text>
         </View>
-      )}
 
-      {/* Next session tip */}
-      <View style={styles.tipCard}>
-        <Text style={styles.tipLabel}>NEXT SESSION</Text>
-        <Text style={styles.tipText}>{NEXT_SESSION_TIPS[trickId]}</Text>
-      </View>
+        <View style={{ height: 110 }} />
+      </ScrollView>
 
-      {/* Back button */}
-      <View style={[styles.ctaWrap, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        <TouchableOpacity
-          style={styles.ctaBtn}
-          onPress={() => navigation.navigate('TrickList')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.ctaBtnText}>BACK TO TRICKS</Text>
+      {/* CTA */}
+      <View style={[s.ctaWrap, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <TouchableOpacity style={s.ctaBtn} onPress={() => navigation.navigate('TrickList')} activeOpacity={0.85}>
+          <Text style={s.ctaBtnText}>BACK TO TRICKS</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a', paddingHorizontal: 20 },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: BG.base },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 12, gap: 12 },
+  backBtn: { width: 36, height: 36, borderRadius: R, backgroundColor: BG.b2, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: LINE.dim },
+  headerLabel: { flex: 1, fontFamily: FONT.mono, fontSize: 9, color: TEXT.t3, letterSpacing: 1.5, textTransform: 'uppercase' },
 
-  header: { marginTop: 16, marginBottom: 28 },
-  label: { color: '#555', fontSize: 11, fontWeight: 'bold', letterSpacing: 2, marginBottom: 8 },
-  trickName: { fontSize: 36, fontWeight: 'bold' },
+  content: { paddingHorizontal: 18, paddingTop: 8 },
 
-  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 28 },
-  statBox: {
-    flex: 1, backgroundColor: '#141414', borderRadius: 12,
-    padding: 16, alignItems: 'center',
-    borderWidth: 1, borderColor: '#2a2a2a',
-  },
-  statValue: { color: '#f5f5f0', fontSize: 22, fontWeight: 'bold', marginBottom: 4 },
-  statLabel: { color: '#555', fontSize: 11 },
+  titleBlock: { backgroundColor: BG.b2, borderWidth: 1, borderColor: LINE.dim, borderRadius: R, padding: 16, marginBottom: 22, position: 'relative' },
+  titleTickTL: { position: 'absolute', top: -1, left: -1, width: 8, height: 8, borderTopWidth: 1.5, borderLeftWidth: 1.5, borderColor: ACCENT },
+  titleTickBR: { position: 'absolute', bottom: -1, right: -1, width: 8, height: 8, borderBottomWidth: 1.5, borderRightWidth: 1.5, borderColor: ACCENT },
+  sessionLabel: { fontFamily: FONT.mono, fontSize: 9, letterSpacing: 2, marginBottom: 8, textTransform: 'uppercase' },
+  title: { fontFamily: FONT.display, fontSize: 32, color: TEXT.t1, textTransform: 'uppercase', letterSpacing: -1.2 },
 
-  section: { marginBottom: 20 },
-  rateHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  sectionLabel: { color: '#555', fontSize: 11, fontWeight: 'bold', letterSpacing: 2 },
-  rateValue: { fontSize: 18, fontWeight: 'bold' },
-  progressBg: { height: 8, backgroundColor: '#2a2a2a', borderRadius: 4, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 4 },
+  rateCard: { backgroundColor: BG.b2, borderWidth: 1, borderColor: LINE.dim, borderRadius: R, padding: 16, gap: 14 },
+  rateText: { fontFamily: FONT.mono, fontSize: 11, color: TEXT.t2, letterSpacing: 0.5, textTransform: 'uppercase' },
 
-  xpRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    marginBottom: 20,
-  },
-  xpText: { color: '#d4ff3d', fontSize: 14, fontWeight: '600' },
-  xpBonus: { color: '#d4ff3d', fontSize: 12, fontWeight: 'bold' },
-
-  unlockCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#141414', borderRadius: 12,
-    padding: 14, marginBottom: 16,
-    borderWidth: 1,
-  },
-  unlockText: { fontSize: 13, flex: 1, lineHeight: 18 },
+  dataCard: { backgroundColor: BG.b2, borderWidth: 1, borderColor: LINE.dim, borderRadius: R, overflow: 'hidden' },
+  dataRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: LINE.dim },
+  dataLabel: { fontFamily: FONT.mono, fontSize: 10, color: TEXT.t3, letterSpacing: 1.1, textTransform: 'uppercase' },
+  dataValue: { fontFamily: FONT.display, fontSize: 14, color: TEXT.t1, letterSpacing: 0.2, textTransform: 'uppercase' },
 
   tipCard: {
-    backgroundColor: '#141414', borderRadius: 12,
-    padding: 16, marginBottom: 'auto',
-    borderWidth: 1, borderColor: '#2a2a2a',
+    flexDirection: 'row', gap: 12,
+    backgroundColor: BG.b2, borderLeftWidth: 2, borderLeftColor: ACCENT, borderRadius: R,
+    padding: 14, paddingLeft: 16,
   },
-  tipLabel: { color: '#555', fontSize: 11, fontWeight: 'bold', letterSpacing: 2, marginBottom: 8 },
-  tipText: { color: '#888', fontSize: 14, lineHeight: 20 },
+  tipDiamond: { width: 10, height: 10, backgroundColor: ACCENT, transform: [{ rotate: '45deg' }], marginTop: 4, flexShrink: 0 },
+  tipText: { fontFamily: FONT.body, fontSize: 13, color: TEXT.t1, lineHeight: 19, flex: 1 },
 
-  ctaWrap: { paddingTop: 16 },
-  ctaBtn: {
-    backgroundColor: '#d4ff3d', borderRadius: 12,
-    paddingVertical: 16, alignItems: 'center',
-  },
-  ctaBtnText: { color: '#0a0a0a', fontSize: 15, fontWeight: 'bold', letterSpacing: 1 },
+  ctaWrap: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 18, paddingTop: 12, backgroundColor: BG.base, borderTopWidth: 1, borderTopColor: LINE.dim },
+  ctaBtn: { backgroundColor: ACCENT, borderRadius: R, paddingVertical: 15, alignItems: 'center' },
+  ctaBtnText: { fontFamily: FONT.display, fontSize: 13, color: '#0A0A0B', letterSpacing: 0.5, textTransform: 'uppercase' },
 });

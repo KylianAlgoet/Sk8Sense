@@ -1,23 +1,26 @@
 // SkateSense MIS v3 — Shared Components
-import React from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
-import { BG, TEXT, LINE, ACCENT, FONT, R, PANEL } from '../design-tokens';
+import React, { memo, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Easing } from 'react-native';
+import { BG, TEXT, LINE, ACCENT, FONT, R, PANEL, BTN } from '../design-tokens';
 
 // ── Background Grid ────────────────────────────────────────────────────────
-export function V3Grid() {
+const GRID_H_LINES = Array.from({ length: 20 }, (_, i) => i * 46);
+const GRID_V_LINES = Array.from({ length: 10 }, (_, i) => i * 46);
+
+export const V3Grid = memo(function V3Grid() {
   return (
     <View style={grid.container} pointerEvents="none">
       {/* Horizontal lines */}
-      {Array.from({ length: 20 }).map((_, i) => (
-        <View key={`h${i}`} style={[grid.hLine, { top: i * 46 }]} />
+      {GRID_H_LINES.map((top, i) => (
+        <View key={`h${i}`} style={[grid.hLine, { top }]} />
       ))}
       {/* Vertical lines */}
-      {Array.from({ length: 10 }).map((_, i) => (
-        <View key={`v${i}`} style={[grid.vLine, { left: i * 46 }]} />
+      {GRID_V_LINES.map((left, i) => (
+        <View key={`v${i}`} style={[grid.vLine, { left }]} />
       ))}
     </View>
   );
-}
+});
 
 const grid = StyleSheet.create({
   container: { position: 'absolute', inset: 0, overflow: 'hidden' },
@@ -97,8 +100,10 @@ const sg = StyleSheet.create({
   label: { fontFamily: FONT.mono, fontSize: 7, letterSpacing: 1.1, textTransform: 'uppercase', color: TEXT.t3, marginTop: 4 },
 });
 
-// ── Motion AI Card ─────────────────────────────────────────────────────────
-export function V3MotionAI({ text, cta, onCta }) {
+// ── SK8SENSE AI Coach Card ─────────────────────────────────────────────────
+export function V3MotionAI({ text, summaryItems, detailText, cta, onCta }) {
+  const [showDetails, setShowDetails] = React.useState(false);
+  const hasDetails = !!detailText;
   return (
     <View style={ai.container}>
       <View style={ai.row}>
@@ -107,10 +112,29 @@ export function V3MotionAI({ text, cta, onCta }) {
         </View>
         <View style={{ flex: 1, gap: 6 }}>
           <View style={ai.labelRow}>
-            <Text style={ai.labelAccent}>MOTION AI</Text>
-            <Text style={ai.labelSub}>MIS.CORE</Text>
+            <Text style={ai.labelAccent}>SK8SENSE AI COACH</Text>
+            <Text style={ai.labelSub}>LIVE FEEDBACK</Text>
           </View>
-          <Text style={ai.body}>{text}</Text>
+          {summaryItems?.length ? (
+            <View style={ai.summaryList}>
+              {summaryItems.map((item, index) => (
+                <View key={`${item.label}-${index}`} style={ai.summaryRow}>
+                  <Text style={ai.summaryLabel}>{item.label}</Text>
+                  <Text style={ai.summaryText}>{item.text}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={ai.body}>{text}</Text>
+          )}
+          {hasDetails && (
+            <>
+              <TouchableOpacity onPress={() => setShowDetails(v => !v)} activeOpacity={0.75}>
+                <Text style={ai.detailToggle}>{showDetails ? 'HIDE DETAILS' : 'MORE DETAILS'}</Text>
+              </TouchableOpacity>
+              {showDetails && <Text style={ai.detailText}>{detailText}</Text>}
+            </>
+          )}
         </View>
       </View>
       {cta && (
@@ -131,6 +155,12 @@ const ai = StyleSheet.create({
   labelAccent: { fontFamily: FONT.mono, fontSize: 9, letterSpacing: 1.62, textTransform: 'uppercase', color: ACCENT },
   labelSub: { fontFamily: FONT.mono, fontSize: 9, letterSpacing: 1.62, textTransform: 'uppercase', color: TEXT.t4 },
   body: { fontFamily: FONT.body, fontSize: 13, color: TEXT.t1, lineHeight: 19.5 },
+  summaryList: { gap: 9 },
+  summaryRow: { gap: 2 },
+  summaryLabel: { fontFamily: FONT.mono, fontSize: 8, letterSpacing: 1.2, textTransform: 'uppercase', color: TEXT.t3 },
+  summaryText: { fontFamily: FONT.body, fontSize: 13, color: TEXT.t1, lineHeight: 18.5 },
+  detailToggle: { fontFamily: FONT.mono, fontSize: 9, letterSpacing: 1.2, color: ACCENT, textTransform: 'uppercase', marginTop: 3 },
+  detailText: { fontFamily: FONT.body, fontSize: 12.5, color: TEXT.t2, lineHeight: 18.5, marginTop: 2 },
   ctaWrap: { marginTop: 12, backgroundColor: ACCENT, borderRadius: R, paddingVertical: 12, alignItems: 'center' },
   ctaBtn: { fontFamily: FONT.display, fontSize: 12, letterSpacing: 0.48, textTransform: 'uppercase', color: '#0A0A0B' },
 });
@@ -141,7 +171,7 @@ export function V3MotionTip({ text }) {
     <View style={mt.container}>
       <View style={mt.diamond} />
       <View style={{ flex: 1, gap: 3 }}>
-        <Text style={mt.label}>MOTION AI · ADVISORY</Text>
+        <Text style={mt.label}>SK8SENSE AI COACH · ADVISORY</Text>
         <Text style={mt.body}>{text}</Text>
       </View>
     </View>
@@ -194,4 +224,82 @@ const chip = StyleSheet.create({
   base: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 4, paddingHorizontal: 8, borderRadius: R, borderWidth: 1 },
   dot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: ACCENT },
   text: { fontFamily: FONT.mono, fontSize: 9, fontWeight: '500', letterSpacing: 0.9, textTransform: 'uppercase' },
+});
+
+// ── Board Link Card — live/offline connection status, no fabricated metrics ────
+// Shows the real BLE link state (pulsing dot + device name) and a Connect CTA when offline.
+// Shared between Home and Dashboard so the rider always knows whether their board is live.
+export function BoardLinkCard({ live, deviceName, simulated, onPressConnect, onPressDisconnect }) {
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let pulseLoop;
+    pulse.stopAnimation();
+    if (live) {
+      pulse.setValue(0);
+      pulseLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulse, { toValue: 1, duration: 1300, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+          Animated.timing(pulse, { toValue: 0, duration: 0, useNativeDriver: true }),
+        ])
+      );
+      pulseLoop.start();
+    } else {
+      pulse.setValue(0);
+    }
+    return () => {
+      pulseLoop?.stop();
+      pulse.stopAnimation();
+    };
+  }, [live, pulse]);
+
+  const ringStyle = {
+    transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 2.2] }) }],
+    opacity: pulse.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.5, 0.2, 0] }),
+  };
+
+  const statusColor = live ? '#4CAF50' : '#FF5722';
+  const statusLabel = live ? (simulated ? 'LIVE · DEMO FEED' : 'LIVE · STREAMING') : 'OFFLINE';
+
+  return (
+    <View style={[link.card, { borderColor: statusColor + '40' }]}>
+      <View style={link.dotWrap}>
+        {live && <Animated.View style={[link.pulseRing, { borderColor: statusColor }, ringStyle]} />}
+        <View style={[link.dot, { backgroundColor: statusColor }]} />
+      </View>
+      <View style={link.info}>
+        <Text style={[link.status, { color: statusColor }]}>{statusLabel}</Text>
+        <Text style={link.name} numberOfLines={1}>{deviceName || 'No board paired'}</Text>
+      </View>
+      {!live ? (
+        <TouchableOpacity style={link.connectBtn} onPress={onPressConnect} activeOpacity={0.85}>
+          <Text style={link.connectBtnText}>CONNECT</Text>
+        </TouchableOpacity>
+      ) : (
+        !simulated && onPressDisconnect && (
+          <TouchableOpacity style={link.disconnectBtn} onPress={onPressDisconnect} activeOpacity={0.85}>
+            <Text style={link.disconnectBtnText}>DISCONNECT</Text>
+          </TouchableOpacity>
+        )
+      )}
+    </View>
+  );
+}
+
+const link = StyleSheet.create({
+  card: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: BG.b2, borderWidth: 1, borderRadius: R,
+    paddingVertical: 12, paddingHorizontal: 14,
+  },
+  dotWrap: { width: 14, height: 14, alignItems: 'center', justifyContent: 'center' },
+  dot: { width: 10, height: 10, borderRadius: 5 },
+  pulseRing: { position: 'absolute', width: 10, height: 10, borderRadius: 5, borderWidth: 1.5 },
+  info: { flex: 1 },
+  status: { fontFamily: FONT.mono, fontSize: 9, fontWeight: '600', letterSpacing: 1.2, marginBottom: 2 },
+  name: { color: TEXT.t1, fontFamily: FONT.mono, fontSize: 12, fontWeight: '600' },
+  connectBtn: { ...BTN.ghost, paddingHorizontal: 12, paddingVertical: 6 },
+  connectBtnText: { color: ACCENT, fontFamily: FONT.mono, fontSize: 10, fontWeight: '600', letterSpacing: 1 },
+  disconnectBtn: { ...BTN.ghost, borderColor: '#FF572240', paddingHorizontal: 12, paddingVertical: 6 },
+  disconnectBtnText: { color: '#FF5722', fontFamily: FONT.mono, fontSize: 10, fontWeight: '600', letterSpacing: 1 },
 });

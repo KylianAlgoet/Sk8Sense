@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform,
@@ -12,6 +12,11 @@ export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+  }, []);
 
   const handleRegister = async () => {
     if (!displayName || !email || !password) {
@@ -27,6 +32,7 @@ export default function RegisterScreen({ navigation }) {
     try {
       await register(email.trim(), password, displayName.trim());
     } catch (e) {
+      if (!mountedRef.current) return;
       const msg = e.message || '';
       if (msg.includes('email-already-in-use')) {
         setError('Email already in use');
@@ -36,7 +42,7 @@ export default function RegisterScreen({ navigation }) {
         setError('Something went wrong. Try again.');
       }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   };
 

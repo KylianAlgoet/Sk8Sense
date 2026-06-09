@@ -41,7 +41,12 @@ function ScanRings({ scanning }) {
         Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
       ])
     );
-    ring(r1, 0).start(); ring(r2, 600).start(); ring(r3, 1200).start();
+    const loops = [ring(r1, 0), ring(r2, 600), ring(r3, 1200)];
+    loops.forEach(loop => loop.start());
+    return () => {
+      loops.forEach(loop => loop.stop());
+      [r1,r2,r3].forEach(r => r.stopAnimation(() => r.setValue(0)));
+    };
   }, [scanning]);
 
   const ringStyle = (anim) => ({
@@ -72,12 +77,95 @@ const sr = StyleSheet.create({
   centerActive: { borderColor:`${ACCENT}55`, backgroundColor:BG.b3 },
 });
 
-export default function ConnectScreen({ navigation }) {
+// Full-screen overlay shown while connecting and right after a successful connection —
+// makes the handshake feel deliberate instead of an instant silent jump to Dashboard.
+function ConnectionOverlay({ status, deviceName }) {
+  const spin = useRef(new Animated.Value(0)).current;
+  const pop = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let spinLoop;
+    if (status === 'connecting') {
+      spin.setValue(0);
+      spinLoop = Animated.loop(
+        Animated.timing(spin, { toValue: 1, duration: 1100, easing: Easing.linear, useNativeDriver: true })
+      );
+      spinLoop.start();
+    } else if (status === 'connected') {
+      pop.setValue(0);
+      Animated.spring(pop, { toValue: 1, friction: 5, tension: 140, useNativeDriver: true }).start();
+    }
+    return () => {
+      spinLoop?.stop();
+      spin.stopAnimation();
+      pop.stopAnimation();
+    };
+  }, [status]);
+
+  if (!status) return null;
+
+  const spinStyle = { transform: [{ rotate: spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] };
+  const popStyle = { transform: [{ scale: pop }] };
+
+  return (
+    <View style={ov.overlay}>
+      <View style={ov.card}>
+        {status === 'connecting' ? (
+          <>
+            <View style={ov.ringWrap}>
+              <Animated.View style={[ov.ring, spinStyle]} />
+              <Ionicons name="bluetooth" size={26} color={ACCENT} />
+            </View>
+            <Text style={ov.title}>CONNECTING…</Text>
+            <Text style={ov.sub}>Pairing with {deviceName}</Text>
+          </>
+        ) : (
+          <>
+            <Animated.View style={[ov.successCircle, popStyle]}>
+              <Ionicons name="checkmark" size={30} color="#0A0A0B" />
+            </Animated.View>
+            <Text style={[ov.title, { color: '#4CAF50' }]}>CONNECTED</Text>
+            <Text style={ov.sub}>{deviceName} is live — taking you to your board</Text>
+          </>
+        )}
+      </View>
+    </View>
+  );
+}
+
+const ov = StyleSheet.create({
+  overlay: { position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'#000000d8', alignItems:'center', justifyContent:'center', zIndex:50 },
+  card: { width:240, alignItems:'center', gap:6 },
+  ringWrap: { width:64, height:64, alignItems:'center', justifyContent:'center', marginBottom:18 },
+  ring: { position:'absolute', width:64, height:64, borderRadius:32, borderWidth:2.5, borderColor:`${ACCENT}33`, borderTopColor:ACCENT },
+  successCircle: { width:56, height:56, borderRadius:28, backgroundColor:'#4CAF50', alignItems:'center', justifyContent:'center', marginBottom:12 },
+  title: { color:TEXT.t1, fontSize:15, fontFamily:FONT.display, letterSpacing:1.5, textTransform:'uppercase', marginBottom:4 },
+  sub: { color:TEXT.t3, fontSize:12, fontFamily:FONT.body, textAlign:'center', lineHeight:18, paddingHorizontal:12 },
+});
+
+export default function ConnectScreen({ navigation, route }) {
+  // Where to land after a successful pairing — e.g. Practice sends { stack: 'Learn', screen: 'Practice', params: {...} }
+  // so the rider returns to the lesson they came from instead of always landing on the Dashboard.
+  const returnTo = route?.params?.returnTo || null;
   const { manager, setManager, isScanning, setScanning, devices, addDevice, setConnectedDevice } = useBleStore();
   const [mockDevices, setMockDevices] = useState([]);
   const [mockScanning, setMockScanning] = useState(false);
   const [permError, setPermError] = useState(false);
   const [connecting, setConnecting] = useState(null);
+  // Drives the full-screen handshake overlay: null → 'connecting' → 'connected' → navigate
+  const [connectStatus, setConnectStatus] = useState(null);
+  const [connectingName, setConnectingName] = useState('');
+  const mountedRef = useRef(true);
+  const timersRef = useRef([]);
+
+  function setSafeTimeout(callback, delay) {
+    const id = setTimeout(() => {
+      timersRef.current = timersRef.current.filter(timer => timer !== id);
+      if (mountedRef.current) callback();
+    }, delay);
+    timersRef.current.push(id);
+    return id;
+  }
 
   useEffect(() => {
     if (IS_WEB) return;
@@ -87,14 +175,23 @@ export default function ConnectScreen({ navigation }) {
     return () => mgr.destroy();
   }, []);
 
+  useEffect(() => () => {
+    mountedRef.current = false;
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+    useBleStore.getState().manager?.stopDeviceScan?.();
+    useBleStore.getState().setScanning(false);
+  }, []);
+
   const startMockScan = () => {
     setMockScanning(true); setMockDevices([]);
-    setTimeout(() => { setMockDevices([MOCK_DEVICE]); setMockScanning(false); }, 1500);
+    setSafeTimeout(() => { setMockDevices([MOCK_DEVICE]); setMockScanning(false); }, 1500);
   };
 
   const startScan = async () => {
     if (!manager || isScanning) return;
     const granted = await requestBluetoothPermissions();
+    if (!mountedRef.current) return;
     if (!granted) {
       setPermError(true);
       Alert.alert('Bluetooth permission denied', 'Go to Settings → Apps → SK8Sense → Permissions.');
@@ -102,22 +199,58 @@ export default function ConnectScreen({ navigation }) {
     }
     setPermError(false); setScanning(true);
     manager.startDeviceScan(null, null, (error, device) => {
-      if (error) { setScanning(false); return; }
+      if (!mountedRef.current) return;
+      if (error) {
+        setScanning(false);
+        console.warn('[BLE] scan error:', error.message, error.errorCode, error.reason);
+        Alert.alert('Scan failed', error.message || 'Could not start the Bluetooth scan.');
+        return;
+      }
       if (device) addDevice(device);
     });
   };
 
   const connect = async (device) => {
     setConnecting(device.id);
-    if (IS_WEB) { setConnectedDevice(device); navigation.navigate('Dashboard'); return; }
+    setConnectingName(device.name || 'your board');
+    setConnectStatus('connecting');
+
+    const finishWithSuccess = (connectedDevice) => {
+      if (!mountedRef.current) return;
+      setConnectedDevice(connectedDevice);
+      setConnectStatus('connected');
+      // Let the rider see the "Connected" confirmation before jumping to where they were headed.
+      // No returnTo means they came here to just pair the board — drop them on Home so they
+      // can choose for themselves: start a session or head into Learning.
+      setSafeTimeout(() => {
+        if (returnTo?.stack) {
+          navigation.getParent()?.navigate(returnTo.stack, { screen: returnTo.screen, params: returnTo.params });
+        } else if (returnTo?.screen) {
+          navigation.navigate(returnTo.screen, returnTo.params);
+        } else {
+          navigation.navigate('Home');
+        }
+      }, 1100);
+    };
+
+    if (IS_WEB) {
+      // Mock handshake — give the overlay a moment so it doesn't feel instant/fake
+      setSafeTimeout(() => finishWithSuccess(device), 900);
+      return;
+    }
+
     manager.stopDeviceScan(); setScanning(false);
     try {
       const connected = await device.connect();
       await connected.requestMTU(185);
       await connected.discoverAllServicesAndCharacteristics();
-      setConnectedDevice(connected);
-      navigation.navigate('Dashboard');
-    } catch (e) { setConnecting(null); }
+      finishWithSuccess(connected);
+    } catch (e) {
+      if (!mountedRef.current) return;
+      setConnecting(null);
+      setConnectStatus(null);
+      Alert.alert('Connection failed', 'Could not pair with the board — make sure it\'s powered on and in range, then try again.');
+    }
   };
 
   const scanning = IS_WEB ? mockScanning : isScanning;
@@ -183,6 +316,8 @@ export default function ConnectScreen({ navigation }) {
         <Ionicons name={scanning ? 'pause-circle-outline' : 'radio-outline'} size={18} color={T.ACCENT_INK} />
         <Text style={s.scanBtnText}>{scanning ? 'SCANNING...' : 'SCAN FOR BOARD'}</Text>
       </TouchableOpacity>
+
+      <ConnectionOverlay status={connectStatus} deviceName={connectingName} />
     </View>
   );
 }

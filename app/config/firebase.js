@@ -1,10 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, setLogLevel } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// TODO: Replace these values with your Firebase project config.
-// Go to https://console.firebase.google.com → your project → Project settings → Your apps → SDK setup
 const firebaseConfig = {
   apiKey: 'AIzaSyBxRKPpTbz-BEm1jRidWqL6L9VYSOMWVAo',
   authDomain: 'skatesense.firebaseapp.com',
@@ -16,6 +14,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+setLogLevel('silent');
 
 export const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage),

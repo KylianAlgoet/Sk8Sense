@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform,
@@ -11,6 +11,11 @@ export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+  }, []);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -22,6 +27,7 @@ export default function LoginScreen({ navigation }) {
     try {
       await login(email.trim(), password);
     } catch (e) {
+      if (!mountedRef.current) return;
       const msg = e.message || '';
       if (msg.includes('invalid-credential') || msg.includes('user-not-found') || msg.includes('wrong-password')) {
         setError('Invalid email or password');
@@ -29,7 +35,7 @@ export default function LoginScreen({ navigation }) {
         setError('Something went wrong. Try again.');
       }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   };
 
@@ -46,7 +52,7 @@ export default function LoginScreen({ navigation }) {
 
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder="Email or Demo"
           placeholderTextColor={TEXT.t3}
           value={email}
           onChangeText={setEmail}
